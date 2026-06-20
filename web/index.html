@@ -31,6 +31,19 @@
 
   <title>free_experience</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    El paquete `passkeys_web` (dependencia transitiva de supabase_flutter) se
+    autorregistra en web y llama a `PasskeyAuthenticator.init()` durante el
+    arranque del engine, antes de `main()`. Si el SDK JS de Passkeys no está
+    presente, lanza "reading 'init' of undefined" y deja la pantalla en blanco.
+    Como aún no usamos autenticación por passkeys en web, definimos un stub
+    no operativo para que el registro no falle. Para habilitar passkeys reales,
+    sustituir este stub por el bundle.js oficial de corbado/flutter-passkeys.
+  -->
+  <script>
+    window.PasskeyAuthenticator = window.PasskeyAuthenticator || { init: function () {} };
+  </script>
 </head>
 <body>
   <!--

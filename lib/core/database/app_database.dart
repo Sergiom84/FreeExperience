@@ -76,7 +76,19 @@ class PendingSyncRecords extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(driftDatabase(name: 'free_experience'));
+  AppDatabase()
+    : super(
+        driftDatabase(
+          name: 'free_experience',
+          // En web, drift exige opciones explícitas: los binarios sqlite3.wasm
+          // y drift_worker.js se sirven desde web/. En nativo este parámetro se
+          // ignora y se usa un fichero en el directorio de documentos.
+          web: DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          ),
+        ),
+      );
 
   AppDatabase.forTesting(super.executor);
 
