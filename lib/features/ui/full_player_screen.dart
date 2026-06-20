@@ -201,6 +201,8 @@ class _ProgressBar extends ConsumerWidget {
             Slider(
               value: value,
               max: max,
+              semanticFormatterCallback: (ms) =>
+                  _format(Duration(milliseconds: ms.round())),
               onChanged: (milliseconds) =>
                   handler.seek(Duration(milliseconds: milliseconds.round())),
             ),

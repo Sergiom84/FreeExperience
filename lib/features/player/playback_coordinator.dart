@@ -28,8 +28,14 @@ class PlaybackCoordinator {
   StreamSubscription<PlaybackState>? _stateSubscription;
   Timer? _progressTimer;
   Timer? _sleepTimer;
+  DateTime? _sleepEnd;
 
-  Duration? get sleepRemaining => _sleepTimer == null ? null : Duration.zero;
+  Duration? get sleepRemaining {
+    final end = _sleepEnd;
+    if (_sleepTimer == null || end == null) return null;
+    final remaining = end.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
 
   Future<void> play(ContentItem item) async {
     final uri = await _downloads.resolve(item);
@@ -61,10 +67,13 @@ class PlaybackCoordinator {
   void setSleepTimer(Duration? duration) {
     _sleepTimer?.cancel();
     _sleepTimer = null;
+    _sleepEnd = null;
     if (duration == null) return;
+    _sleepEnd = DateTime.now().add(duration);
     _sleepTimer = Timer(duration, () {
       unawaited(_handler.pause());
       _sleepTimer = null;
+      _sleepEnd = null;
     });
   }
 

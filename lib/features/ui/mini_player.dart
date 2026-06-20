@@ -22,48 +22,52 @@ class MiniPlayer extends ConsumerWidget {
             final playing = stateSnapshot.data?.playing ?? false;
             return Material(
               color: Theme.of(context).colorScheme.surface,
-              child: InkWell(
-                onTap: () => context.push('/player'),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 64),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 3,
-                        height: 64,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            if (item.artist != null) ...[
-                              const SizedBox(height: 3),
+              child: Semantics(
+                button: true,
+                label: 'Reproduciendo: ${item.title}',
+                child: InkWell(
+                  onTap: () => context.push('/player'),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 64),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 3,
+                          height: 64,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                item.artist!,
+                                item.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall,
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
+                              if (item.artist != null) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  item.artist!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: playing ? 'Pausar' : 'Reproducir',
-                        onPressed: playing ? handler.pause : handler.play,
-                        icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
+                        IconButton(
+                          tooltip: playing ? 'Pausar' : 'Reproducir',
+                          onPressed: playing ? handler.pause : handler.play,
+                          icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
                   ),
                 ),
               ),

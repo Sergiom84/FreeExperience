@@ -140,12 +140,16 @@ class _MateriaFeature extends StatelessWidget {
         children: [
           Expanded(
             flex: 7,
-            child: InkWell(
-              onTap: () => context.push('/content/${item.id}'),
-              child: ContentCover(
-                path: item.coverPath,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(110),
+            child: Semantics(
+              button: true,
+              label: item.title,
+              child: InkWell(
+                onTap: () => context.push('/content/${item.id}'),
+                child: ContentCover(
+                  path: item.coverPath,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(110),
+                  ),
                 ),
               ),
             ),
@@ -192,36 +196,40 @@ class _MineralFeature extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => context.push('/content/${item.id}'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Divider(color: Theme.of(context).dividerColor),
-          const SizedBox(height: 14),
-          AspectRatio(
-            aspectRatio: 1.42,
-            child: ColorFiltered(
-              colorFilter: const ColorFilter.mode(
-                Color(0x18000000),
-                BlendMode.saturation,
+    return Semantics(
+      button: true,
+      label: item.title,
+      child: InkWell(
+        onTap: () => context.push('/content/${item.id}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Divider(color: Theme.of(context).dividerColor),
+            const SizedBox(height: 14),
+            AspectRatio(
+              aspectRatio: 1.42,
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.mode(
+                  Color(0x18000000),
+                  BlendMode.saturation,
+                ),
+                child: ContentCover(path: item.coverPath),
               ),
-              child: ContentCover(path: item.coverPath),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _FeatureCopy(item: item)),
-                const SizedBox(width: 16),
-                _PlayGlyph(item: item),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _FeatureCopy(item: item)),
+                  const SizedBox(width: 16),
+                  _PlayGlyph(item: item),
+                ],
+              ),
             ),
-          ),
-          Divider(color: Theme.of(context).dividerColor, height: 1),
-        ],
+            Divider(color: Theme.of(context).dividerColor, height: 1),
+          ],
+        ),
       ),
     );
   }
@@ -236,56 +244,60 @@ class _CatalogRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final minimal = direction == DesignDirection.mineral;
-    return InkWell(
-      onTap: () => context.push('/content/${item.id}'),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 82),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Theme.of(context).dividerColor),
+    return Semantics(
+      button: true,
+      label: [item.title, if (item.author != null) item.author!].join(', '),
+      child: InkWell(
+        onTap: () => context.push('/content/${item.id}'),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 82),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Theme.of(context).dividerColor),
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            if (!minimal) ...[
-              SizedBox(
-                width: 88,
-                height: 66,
-                child: ContentCover(
-                  path: item.coverPath,
-                  borderRadius: BorderRadius.circular(
-                    direction == DesignDirection.materia ? 4 : 2,
+          child: Row(
+            children: [
+              if (!minimal) ...[
+                SizedBox(
+                  width: 88,
+                  height: 66,
+                  child: ContentCover(
+                    path: item.coverPath,
+                    borderRadius: BorderRadius.circular(
+                      direction == DesignDirection.materia ? 4 : 2,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  if (item.author != null) ...[
-                    const SizedBox(height: 5),
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      item.author!,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      item.title,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    if (item.author != null) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        item.author!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              item.durationLabel,
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ],
+              const SizedBox(width: 12),
+              Text(
+                item.durationLabel,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -334,20 +346,26 @@ class _PlayGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          padding: EdgeInsets.zero,
-          shape: circular ? const CircleBorder() : null,
-        ),
-        onPressed: () => context.push('/content/${item.id}'),
-        child: Icon(
-          item.kind == ContentKind.recommendation
-              ? Icons.arrow_outward
-              : Icons.play_arrow,
-          size: 21,
+    final label = item.kind == ContentKind.recommendation
+        ? 'Abrir ${item.title}'
+        : 'Reproducir ${item.title}';
+    return Tooltip(
+      message: label,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.zero,
+            shape: circular ? const CircleBorder() : null,
+          ),
+          onPressed: () => context.push('/content/${item.id}'),
+          child: Icon(
+            item.kind == ContentKind.recommendation
+                ? Icons.arrow_outward
+                : Icons.play_arrow,
+            size: 21,
+          ),
         ),
       ),
     );

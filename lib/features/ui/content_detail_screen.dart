@@ -178,14 +178,20 @@ class _VideoSectionState extends ConsumerState<_VideoSection> {
         await controller.dispose();
         return;
       }
+      controller.addListener(_onVideoUpdate);
       setState(() => _controller = controller);
     } on Object catch (error) {
       if (mounted) setState(() => _error = error);
     }
   }
 
+  void _onVideoUpdate() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _controller?.removeListener(_onVideoUpdate);
     _controller?.dispose();
     super.dispose();
   }
@@ -214,11 +220,11 @@ class _VideoSectionState extends ConsumerState<_VideoSection> {
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: () {
-            setState(() {
-              controller.value.isPlaying
-                  ? controller.pause()
-                  : controller.play();
-            });
+            if (controller.value.isPlaying) {
+              controller.pause();
+            } else {
+              controller.play();
+            }
           },
           icon: Icon(
             controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
