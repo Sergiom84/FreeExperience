@@ -15,6 +15,7 @@
       "request": "launch",
       "type": "dart",
       "deviceId": "chrome",
+      "flutterMode": "release",
       "args": [
         "--dart-define=SUPABASE_URL=https://vqujycmdbgvkukbslhgz.supabase.co",
         "--dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_FKhYHUmLaSRUDx48lV8_Ng_PBn-cwJX"
