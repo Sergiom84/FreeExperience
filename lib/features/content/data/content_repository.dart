@@ -1,0 +1,187 @@
+import 'dart:async';
+
+import 'package:drift/drift.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/database/app_database.dart';
+import '../domain/content_item.dart';
+import 'seed_catalog.dart';
+
+abstract interface class ContentRepository {
+  Future<void> bootstrap();
+  Future<void> refresh();
+  Stream<List<ContentItem>> watchPublished({ContentKind? kind});
+  Stream<ContentItem?> watchById(String id);
+  Future<ContentItem?> getById(String id);
+  Stream<List<ContentItem>> watchFavorites();
+  Stream<bool> watchIsFavorite(String id);
+  Future<void> toggleFavorite(String id);
+}
+
+class DriftContentRepository implements ContentRepository {
+  DriftContentRepository({
+    required AppDatabase database,
+    SupabaseClient? remote,
+  }) : _database = database,
+       _remote = remote;
+
+  final AppDatabase _database;
+  final SupabaseClient? _remote;
+
+  @override
+  Future<void> bootstrap() async {
+    if (await _database.contentCount() == 0) {
+      await _database.upsertContent(seedCatalog.map(_toCompanion));
+    }
+    if (_remote != null) {
+      unawaited(refresh());
+    }
+  }
+
+  @override
+  Future<void> refresh() async {
+    final remote = _remote;
+    if (remote == null) return;
+    try {
+      final rows = await remote
+          .from('content_items')
+          .select('*, media_assets(*)')
+          .eq('status', 'published')
+          .order('sort_order');
+
+      final items = rows
+          .map((row) => _fromRemote(Map<String, dynamic>.from(row)))
+          .toList();
+      if (items.isNotEmpty) {
+        await _database.upsertContent(items.map(_toCompanion));
+      }
+    } on Object {
+      return;
+    }
+  }
+
+  @override
+  Stream<List<ContentItem>> watchPublished({ContentKind? kind}) => _database
+      .watchPublished(kind: kind?.databaseValue)
+      .map((rows) => rows.map(_fromRow).toList());
+
+  @override
+  Stream<ContentItem?> watchById(String id) => _database
+      .watchContentById(id)
+      .map((row) => row == null ? null : _fromRow(row));
+
+  @override
+  Future<ContentItem?> getById(String id) async {
+    final row = await _database.contentById(id);
+    return row == null ? null : _fromRow(row);
+  }
+
+  @override
+  Stream<List<ContentItem>> watchFavorites() =>
+      _database.watchFavorites().map((rows) => rows.map(_fromRow).toList());
+
+  @override
+  Stream<bool> watchIsFavorite(String id) => _database.watchIsFavorite(id);
+
+  @override
+  Future<void> toggleFavorite(String id) async {
+    final favorite = await _database.isFavorite(id);
+    await _database.setFavorite(id, favorite: !favorite);
+  }
+
+  CachedContentItemsCompanion _toCompanion(ContentItem item) =>
+      CachedContentItemsCompanion.insert(
+        id: item.id,
+        kind: item.kind.databaseValue,
+        status: const Value('published'),
+        title: item.title,
+        author: Value(item.author),
+        body: Value(item.body),
+        externalUrl: Value(item.externalUrl),
+        coverPath: item.coverPath,
+        mediaPath: Value(item.mediaPath),
+        durationSeconds: Value(item.duration.inSeconds),
+        featured: Value(item.featured),
+        sortOrder: Value(item.sortOrder),
+        publishedAt: Value(item.publishedAt),
+        updatedAt: DateTime.now().toUtc(),
+      );
+
+  ContentItem _fromRow(CachedContentItem row) => ContentItem(
+    id: row.id,
+    kind: ContentKindLabel.parse(row.kind),
+    title: row.title,
+    author: row.author,
+    body: row.body,
+    externalUrl: row.externalUrl,
+    coverPath: row.coverPath,
+    mediaPath: row.mediaPath,
+    duration: Duration(seconds: row.durationSeconds),
+    featured: row.featured,
+    sortOrder: row.sortOrder,
+    publishedAt: row.publishedAt,
+  );
+
+  ContentItem _fromRemote(Map<String, dynamic> row) {
+    final assets = (row['media_assets'] as List<dynamic>? ?? const [])
+        .map((value) => Map<String, dynamic>.from(value as Map))
+        .toList();
+    final preferredKind = row['kind'] == 'video' ? 'video' : 'audio';
+    final media = assets
+        .where((asset) => asset['kind'] == preferredKind)
+        .firstOrNull;
+    final coverPath = row['cover_path'] as String? ?? '';
+    final storagePath = media?['storage_path'] as String?;
+    return ContentItem(
+      id: row['id'] as String,
+      kind: ContentKindLabel.parse(row['kind'] as String),
+      title: row['title'] as String,
+      author: row['author'] as String?,
+      body: row['body'] as String?,
+      externalUrl: row['external_url'] as String?,
+      coverPath: coverPath.startsWith('http')
+          ? coverPath
+          : _remote!.storage.from('covers').getPublicUrl(coverPath),
+      mediaPath: storagePath == null ? null : 'storage://$storagePath',
+      duration: Duration(seconds: row['duration_seconds'] as int? ?? 0),
+      featured: row['is_featured'] as bool? ?? false,
+      sortOrder: row['sort_order'] as int? ?? 0,
+      publishedAt: DateTime.tryParse(row['published_at'] as String? ?? ''),
+    );
+  }
+}
+
+abstract interface class ProgressRepository {
+  Stream<PlaybackProgressRecord?> watch(String contentId);
+  Future<PlaybackProgressRecord?> get(String contentId);
+  Future<void> save(
+    String contentId,
+    Duration position, {
+    required bool completed,
+  });
+}
+
+class DriftProgressRepository implements ProgressRepository {
+  DriftProgressRepository(this._database);
+
+  final AppDatabase _database;
+
+  @override
+  Stream<PlaybackProgressRecord?> watch(String contentId) =>
+      _database.watchProgress(contentId);
+
+  @override
+  Future<PlaybackProgressRecord?> get(String contentId) =>
+      _database.progressFor(contentId);
+
+  @override
+  Future<void> save(
+    String contentId,
+    Duration position, {
+    required bool completed,
+  }) => _database.saveProgress(
+    contentId: contentId,
+    position: position,
+    completed: completed,
+  );
+}
