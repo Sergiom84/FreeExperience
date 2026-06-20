@@ -44,3 +44,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .gstack/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
