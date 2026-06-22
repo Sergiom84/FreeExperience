@@ -16,34 +16,44 @@ class AppShell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const MiniPlayer(),
-          NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (index) => navigationShell.goBranch(
-              index,
-              initialLocation: index == navigationShell.currentIndex,
+          NavigationBarTheme(
+            data: NavigationBarThemeData(
+              labelTextStyle: WidgetStateProperty.resolveWith(
+                (states) =>
+                    (Theme.of(context).textTheme.labelMedium ??
+                            const TextStyle())
+                        .copyWith(fontSize: 11),
+              ),
             ),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.water_drop_outlined),
-                selectedIcon: Icon(Icons.water_drop),
-                label: 'Meditar',
+            child: NavigationBar(
+              selectedIndex: navigationShell.currentIndex,
+              onDestinationSelected: (index) => navigationShell.goBranch(
+                index,
+                initialLocation: index == navigationShell.currentIndex,
               ),
-              NavigationDestination(
-                icon: Icon(Icons.self_improvement_outlined),
-                selectedIcon: Icon(Icons.self_improvement),
-                label: 'Prácticas',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.graphic_eq_outlined),
-                selectedIcon: Icon(Icons.graphic_eq),
-                label: 'Canalizaciones',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.slow_motion_video_outlined),
-                selectedIcon: Icon(Icons.slow_motion_video),
-                label: 'Inspiración',
-              ),
-            ],
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.water_drop_outlined),
+                  selectedIcon: Icon(Icons.water_drop),
+                  label: 'Meditar',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.self_improvement_outlined),
+                  selectedIcon: Icon(Icons.self_improvement),
+                  label: 'Prácticas',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.graphic_eq_outlined),
+                  selectedIcon: Icon(Icons.graphic_eq),
+                  label: 'Canalizaciones',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.slow_motion_video_outlined),
+                  selectedIcon: Icon(Icons.slow_motion_video),
+                  label: 'Inspiración',
+                ),
+              ],
+            ),
           ),
         ],
       ),

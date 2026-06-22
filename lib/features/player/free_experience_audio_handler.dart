@@ -68,6 +68,9 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
   Future<void> pause() => _player.pause();
 
   @override
+  Future<void> setSpeed(double speed) => _player.setSpeed(speed);
+
+  @override
   Future<void> seek(Duration position) {
     final duration = _player.duration;
     final safePosition = position < Duration.zero

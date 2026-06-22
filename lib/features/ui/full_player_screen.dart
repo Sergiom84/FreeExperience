@@ -11,10 +11,21 @@ class FullPlayerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final handler = ref.watch(audioHandlerProvider);
+    final queue = ref.watch(playbackQueueProvider).value;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reproduciendo'),
         actions: [
+          StreamBuilder<PlaybackState>(
+            stream: handler.playbackState,
+            builder: (context, snapshot) {
+              final speed = snapshot.data?.speed ?? 1.0;
+              return TextButton(
+                onPressed: () => handler.setSpeed(_nextSpeed(speed)),
+                child: Text(_speedLabel(speed)),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Temporizador',
             onPressed: () => _showTimer(context, ref),
@@ -33,105 +44,150 @@ class FullPlayerScreen extends ConsumerWidget {
           final content = ref.watch(contentByIdProvider(media.id)).value;
           return SafeArea(
             top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 16, 28, 32),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: 4 / 5,
-                        child: content == null
-                            ? ColoredBox(
-                                color: Theme.of(context).colorScheme.surface,
-                              )
-                            : ContentCover(path: content.coverPath),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 16, 28, 32),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: AspectRatio(
+                            aspectRatio: 4 / 5,
+                            child: content == null
+                                ? ColoredBox(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.surface,
+                                  )
+                                : ContentCover(path: content.coverPath),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    media.title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineLarge,
-                  ),
-                  if (media.artist != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      media.artist!,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                  const SizedBox(height: 22),
-                  _ProgressBar(item: media),
-                  const SizedBox(height: 18),
-                  StreamBuilder<PlaybackState>(
-                    stream: handler.playbackState,
-                    builder: (context, snapshot) {
-                      final state = snapshot.data;
-                      final playing = state?.playing ?? false;
-                      final buffering =
-                          state?.processingState ==
-                              AudioProcessingState.loading ||
-                          state?.processingState ==
-                              AudioProcessingState.buffering;
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          IconButton(
-                            tooltip: 'Retroceder 15 segundos',
-                            onPressed: () => handler.seek(
-                              handler.position - const Duration(seconds: 15),
-                            ),
-                            icon: const Icon(Icons.replay_10),
-                            iconSize: 30,
-                          ),
-                          SizedBox(
-                            width: 68,
-                            height: 68,
-                            child: FilledButton(
-                              style: FilledButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                shape: const CircleBorder(),
+                      const SizedBox(height: 28),
+                      Text(
+                        media.title,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineLarge,
+                      ),
+                      if (media.artist != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          media.artist!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                      const SizedBox(height: 22),
+                      _ProgressBar(item: media),
+                      const SizedBox(height: 18),
+                      StreamBuilder<PlaybackState>(
+                        stream: handler.playbackState,
+                        builder: (context, snapshot) {
+                          final state = snapshot.data;
+                          final playing = state?.playing ?? false;
+                          final buffering =
+                              state?.processingState ==
+                                  AudioProcessingState.loading ||
+                              state?.processingState ==
+                                  AudioProcessingState.buffering;
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              IconButton(
+                                tooltip: 'Anterior',
+                                onPressed: (queue?.hasPrevious ?? false)
+                                    ? () => ref
+                                          .read(playbackCoordinatorProvider)
+                                          .skipToPrevious()
+                                    : null,
+                                icon: const Icon(Icons.skip_previous),
+                                iconSize: 28,
                               ),
-                              onPressed: buffering
-                                  ? null
-                                  : playing
-                                  ? handler.pause
-                                  : handler.play,
-                              child: buffering
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Icon(
-                                      playing ? Icons.pause : Icons.play_arrow,
-                                      size: 32,
-                                    ),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Avanzar 15 segundos',
-                            onPressed: () => handler.seek(
-                              handler.position + const Duration(seconds: 15),
-                            ),
-                            icon: const Icon(Icons.forward_10),
-                            iconSize: 30,
-                          ),
-                        ],
-                      );
-                    },
+                              IconButton(
+                                tooltip: 'Retroceder 15 segundos',
+                                onPressed: () => handler.seek(
+                                  handler.position -
+                                      const Duration(seconds: 15),
+                                ),
+                                icon: const Icon(Icons.replay_10),
+                                iconSize: 30,
+                              ),
+                              SizedBox(
+                                width: 68,
+                                height: 68,
+                                child: FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    shape: const CircleBorder(),
+                                  ),
+                                  onPressed: buffering
+                                      ? null
+                                      : playing
+                                      ? handler.pause
+                                      : handler.play,
+                                  child: buffering
+                                      ? const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Icon(
+                                          playing
+                                              ? Icons.pause
+                                              : Icons.play_arrow,
+                                          size: 32,
+                                        ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Avanzar 15 segundos',
+                                onPressed: () => handler.seek(
+                                  handler.position +
+                                      const Duration(seconds: 15),
+                                ),
+                                icon: const Icon(Icons.forward_10),
+                                iconSize: 30,
+                              ),
+                              IconButton(
+                                tooltip: 'Siguiente',
+                                onPressed: (queue?.hasNext ?? false)
+                                    ? () => ref
+                                          .read(playbackCoordinatorProvider)
+                                          .skipToNext()
+                                    : null,
+                                icon: const Icon(Icons.skip_next),
+                                iconSize: 28,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           );
         },
       ),
     );
+  }
+
+  double _nextSpeed(double speed) => switch (speed) {
+    < 1.0 => 1.0,
+    < 1.25 => 1.25,
+    < 1.5 => 1.5,
+    _ => 0.75,
+  };
+
+  String _speedLabel(double speed) {
+    final text = speed == speed.roundToDouble()
+        ? speed.toStringAsFixed(0)
+        : speed.toStringAsFixed(2);
+    return '${text}x';
   }
 
   Future<void> _showTimer(BuildContext context, WidgetRef ref) =>

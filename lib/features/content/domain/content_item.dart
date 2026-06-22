@@ -4,7 +4,7 @@ extension ContentKindLabel on ContentKind {
   String get databaseValue => name;
 
   String get label => switch (this) {
-    ContentKind.meditation => 'Meditar',
+    ContentKind.meditation => 'Meditaciones',
     ContentKind.practice => 'Prácticas',
     ContentKind.channeling => 'Canalizaciones',
     ContentKind.video => 'Vídeos',

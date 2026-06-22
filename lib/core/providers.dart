@@ -77,6 +77,10 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   );
 });
 
+final playbackQueueProvider = StreamProvider<QueueSnapshot>((ref) {
+  return ref.watch(playbackCoordinatorProvider).queue;
+});
+
 final playbackCoordinatorProvider = Provider<PlaybackCoordinator>((ref) {
   final coordinator = PlaybackCoordinator(
     handler: ref.watch(audioHandlerProvider),

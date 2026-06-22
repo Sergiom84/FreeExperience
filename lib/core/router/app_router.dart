@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/admin_gate_screen.dart';
+import '../../features/admin/admin_wizard_screen.dart';
 import '../../features/content/domain/content_item.dart';
 import '../../features/ui/app_shell.dart';
 import '../../features/ui/catalog_screen.dart';
@@ -72,6 +74,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/favorites',
         builder: (context, state) => const FavoritesScreen(),
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminGateScreen(),
+      ),
+      GoRoute(
+        path: '/admin/:kind/nuevo',
+        builder: (context, state) => AdminWizardScreen(
+          kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/:kind/editar/:id',
+        builder: (context, state) => AdminWizardScreen(
+          kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+          editId: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: '/admin/:kind',
+        builder: (context, state) => AdminSectionScreen(
+          kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+        ),
       ),
       GoRoute(
         path: '/legal/:document',

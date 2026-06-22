@@ -52,9 +52,7 @@ class DriftContentRepository implements ContentRepository {
       final items = rows
           .map((row) => _fromRemote(Map<String, dynamic>.from(row)))
           .toList();
-      if (items.isNotEmpty) {
-        await _database.upsertContent(items.map(_toCompanion));
-      }
+      await _database.replacePublishedFromRemote(items.map(_toCompanion));
     } on Object {
       return;
     }

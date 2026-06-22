@@ -47,6 +47,27 @@ class CatalogScreen extends ConsumerWidget {
   }
 }
 
+const _months = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+];
+
+String _formatDate(DateTime? date) {
+  if (date == null) return '';
+  final local = date.toLocal();
+  return '${local.day} ${_months[local.month - 1]} ${local.year}';
+}
+
 class ContentCollection extends ConsumerWidget {
   const ContentCollection({required this.items, super.key});
 
@@ -60,9 +81,8 @@ class ContentCollection extends ConsumerWidget {
         child: Center(child: Text('Sin contenido')),
       );
     }
-    final featured =
-        items.where((item) => item.featured).firstOrNull ?? items.first;
-    final rest = items.where((item) => item.id != featured.id).toList();
+    final featured = items.first;
+    final rest = items.skip(1).toList();
     final direction = ref.watch(designDirectionProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,9 +93,7 @@ class ContentCollection extends ConsumerWidget {
           DesignDirection.mineral => _MineralFeature(item: featured),
         },
         if (rest.isNotEmpty) ...[
-          const SizedBox(height: 28),
-          Text('Continuar', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 14),
+          const SizedBox(height: 24),
           ...rest.map((item) => _CatalogRow(item: item, direction: direction)),
         ],
       ],
@@ -243,7 +261,6 @@ class _CatalogRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minimal = direction == DesignDirection.mineral;
     return Semantics(
       button: true,
       label: [item.title, if (item.author != null) item.author!].join(', '),
@@ -259,19 +276,17 @@ class _CatalogRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (!minimal) ...[
-                SizedBox(
-                  width: 88,
-                  height: 66,
-                  child: ContentCover(
-                    path: item.coverPath,
-                    borderRadius: BorderRadius.circular(
-                      direction == DesignDirection.materia ? 4 : 2,
-                    ),
+              SizedBox(
+                width: 88,
+                height: 66,
+                child: ContentCover(
+                  path: item.coverPath,
+                  borderRadius: BorderRadius.circular(
+                    direction == DesignDirection.materia ? 4 : 2,
                   ),
                 ),
-                const SizedBox(width: 14),
-              ],
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,6 +301,13 @@ class _CatalogRow extends StatelessWidget {
                       Text(
                         item.author!,
                         style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                    if (_formatDate(item.publishedAt).isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatDate(item.publishedAt),
+                        style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ],
                   ],
@@ -333,6 +355,7 @@ class _Metadata extends StatelessWidget {
     final values = [
       item.author,
       item.durationLabel,
+      _formatDate(item.publishedAt),
     ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
     return Text(values, style: Theme.of(context).textTheme.bodySmall);
   }
@@ -372,26 +395,59 @@ class _PlayGlyph extends StatelessWidget {
   }
 }
 
-class CatalogLoading extends StatelessWidget {
+class CatalogLoading extends ConsumerWidget {
   const CatalogLoading({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final direction = ref.watch(designDirectionProvider);
+    final color = Theme.of(context).colorScheme.surface;
+    final feature = switch (direction) {
+      DesignDirection.umbral => AspectRatio(
+        aspectRatio: 1.06,
+        child: ColoredBox(color: color),
+      ),
+      DesignDirection.materia => SizedBox(
+        height: 330,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              flex: 7,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(110),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(flex: 3, child: SizedBox()),
+          ],
+        ),
+      ),
+      DesignDirection.mineral => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Divider(color: Theme.of(context).dividerColor),
+          const SizedBox(height: 14),
+          AspectRatio(aspectRatio: 1.42, child: ColoredBox(color: color)),
+          const SizedBox(height: 15),
+          Divider(color: Theme.of(context).dividerColor, height: 1),
+        ],
+      ),
+    };
     return Column(
       children: [
-        AspectRatio(
-          aspectRatio: 1.06,
-          child: ColoredBox(color: Theme.of(context).colorScheme.surface),
-        ),
+        feature,
         const SizedBox(height: 24),
         ...List.generate(
           2,
           (_) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: SizedBox(
-              height: 72,
-              child: ColoredBox(color: Theme.of(context).colorScheme.surface),
-            ),
+            child: SizedBox(height: 72, child: ColoredBox(color: color)),
           ),
         ),
       ],

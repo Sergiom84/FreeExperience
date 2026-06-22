@@ -106,6 +106,26 @@ class AppDatabase extends _$AppDatabase {
         batch.insertAllOnConflictUpdate(cachedContentItems, entries.toList());
       });
 
+  /// Mirrors the remote published catalogue locally: upserts the given rows and
+  /// removes published rows that no longer exist remotely (e.g. deleted items).
+  Future<void> replacePublishedFromRemote(
+    Iterable<CachedContentItemsCompanion> entries,
+  ) async {
+    final list = entries.toList();
+    final ids = list.map((entry) => entry.id.value).toList();
+    await transaction(() async {
+      if (list.isNotEmpty) {
+        await batch(
+          (batch) => batch.insertAllOnConflictUpdate(cachedContentItems, list),
+        );
+      }
+      await (delete(cachedContentItems)..where(
+            (table) => table.status.equals('published') & table.id.isNotIn(ids),
+          ))
+          .go();
+    });
+  }
+
   Stream<List<CachedContentItem>> watchPublished({String? kind}) {
     final query = select(cachedContentItems)
       ..where((table) {
@@ -113,9 +133,8 @@ class AppDatabase extends _$AppDatabase {
         return kind == null ? published : published & table.kind.equals(kind);
       })
       ..orderBy([
-        (table) => OrderingTerm.desc(table.featured),
-        (table) => OrderingTerm.asc(table.sortOrder),
         (table) => OrderingTerm.desc(table.publishedAt),
+        (table) => OrderingTerm.desc(table.sortOrder),
       ]);
     return query.watch();
   }
