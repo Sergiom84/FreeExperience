@@ -24,31 +24,23 @@ class AdminAuth {
 
   final SupabaseClient? _client;
 
-  /// Usernames are mapped to a synthetic email behind the scenes, so people can
-  /// sign in with just "sergio" instead of a real address.
-  static const _domain = 'freeexperience.app';
-
-  String _emailFor(String username) =>
-      '${username.trim().toLowerCase()}@$_domain';
-
-  Future<void> signIn(String username, String password) async {
+  Future<void> signIn(String email, String password) async {
     final client = _client;
     if (client == null) throw StateError('Supabase no está configurado');
     await client.auth.signInWithPassword(
-      email: _emailFor(username),
+      email: email.trim(),
       password: password,
     );
   }
 
-  Future<void> register(String username, String password) async {
+  Future<void> register(String email, String password) async {
     final client = _client;
     if (client == null) throw StateError('Supabase no está configurado');
-    final name = username.trim().toLowerCase();
-    await client.auth.signUp(
-      email: _emailFor(name),
-      password: password,
-      data: {'username': name},
-    );
+    // Sign out any active anonymous session before creating a new account.
+    if (client.auth.currentSession != null) {
+      await client.auth.signOut(scope: SignOutScope.local);
+    }
+    await client.auth.signUp(email: email.trim(), password: password);
   }
 
   Future<void> signOut() async {

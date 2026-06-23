@@ -49,7 +49,7 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
   Future<void> _submit() async {
     if (_busy) return;
     if (_user.text.trim().isEmpty || _password.text.isEmpty) {
-      setState(() => _error = 'Completa usuario y contraseña');
+      setState(() => _error = 'Completa el email y la contraseña');
       return;
     }
     if (_register && _password.text != _confirm.text) {
@@ -125,8 +125,9 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
                 autofocus: true,
                 enabled: !_busy,
                 autocorrect: false,
+                keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Usuario'),
+                decoration: const InputDecoration(labelText: 'Email'),
               ),
               const SizedBox(height: 14),
               TextField(
