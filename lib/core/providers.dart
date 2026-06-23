@@ -93,10 +93,23 @@ final playbackCoordinatorProvider = Provider<PlaybackCoordinator>((ref) {
 });
 
 final appBootstrapProvider = FutureProvider<void>((ref) async {
-  await ref.read(contentRepositoryProvider).bootstrap();
+  // Identity first so the catalogue refresh below runs with a valid session
+  // (RLS on content_items only exposes published rows to authenticated users).
   await ref.read(identityServiceProvider).bootstrap();
+  await ref.read(contentRepositoryProvider).bootstrap();
   await ref.read(syncServiceProvider).synchronize();
   ref.read(playbackCoordinatorProvider);
+});
+
+/// Re-pulls the published catalogue whenever the user becomes linked. A fresh
+/// sign-in happens after [appBootstrapProvider] has already run, so without this
+/// the local cache would stay empty until a manual pull-to-refresh.
+final contentAutoRefreshProvider = Provider<void>((ref) {
+  ref.listen<AsyncValue<IdentitySnapshot>>(identityProvider, (prev, next) {
+    if (next.asData?.value.status == IdentityStatus.linked) {
+      ref.read(contentRepositoryProvider).refresh();
+    }
+  }, fireImmediately: true);
 });
 
 final contentByKindProvider =

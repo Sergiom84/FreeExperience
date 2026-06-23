@@ -16,9 +16,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   bool _obscure = true;
+  bool _obscureConfirm = true;
   bool _loading = false;
   bool _isSignUp = false;
+  bool _pendingConfirmation = false;
   String? _error;
 
   @override
@@ -36,6 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
   }
 
@@ -43,6 +47,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
     if (email.isEmpty || password.isEmpty) return;
+    if (_isSignUp && password != _confirmCtrl.text) {
+      setState(() => _error = 'Las contraseñas no coinciden.');
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -51,15 +59,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final svc = ref.read(identityServiceProvider);
       if (_isSignUp) {
         await svc.signUp(email, password);
-      } else {
-        await svc.signInWithPassword(email, password);
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _pendingConfirmation = true;
+          });
+        }
+        return;
       }
+      await svc.signInWithPassword(email, password);
       if (mounted) context.go('/meditar');
     } catch (e) {
       setState(() => _error = _friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _acceptConfirmation() {
+    setState(() {
+      _pendingConfirmation = false;
+      _isSignUp = false;
+      _error = null;
+      _passwordCtrl.clear();
+      _confirmCtrl.clear();
+    });
   }
 
   String _friendlyError(Object e) {
@@ -103,35 +127,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         _Header(),
                         const SizedBox(height: 28),
-                        _Form(
-                          emailCtrl: _emailCtrl,
-                          passwordCtrl: _passwordCtrl,
-                          obscure: _obscure,
-                          onToggleObscure: () =>
-                              setState(() => _obscure = !_obscure),
-                          onSubmitted: (_) => _submit(),
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            _error!,
-                            style: const TextStyle(
-                              color: Color(0xFFFF6B6B),
-                              fontSize: 13,
+                        if (_pendingConfirmation)
+                          _ConfirmationNotice(onAccept: _acceptConfirmation)
+                        else ...[
+                          _Form(
+                            emailCtrl: _emailCtrl,
+                            passwordCtrl: _passwordCtrl,
+                            confirmCtrl: _confirmCtrl,
+                            isSignUp: _isSignUp,
+                            obscure: _obscure,
+                            obscureConfirm: _obscureConfirm,
+                            onToggleObscure: () =>
+                                setState(() => _obscure = !_obscure),
+                            onToggleObscureConfirm: () => setState(
+                              () => _obscureConfirm = !_obscureConfirm,
                             ),
-                            textAlign: TextAlign.center,
+                            onSubmitted: (_) => _submit(),
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              _error!,
+                              style: const TextStyle(
+                                color: Color(0xFFFF6B6B),
+                                fontSize: 13,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          _Actions(
+                            loading: _loading,
+                            isSignUp: _isSignUp,
+                            onSubmit: _submit,
+                            onToggleMode: () => setState(() {
+                              _isSignUp = !_isSignUp;
+                              _error = null;
+                            }),
                           ),
                         ],
-                        const SizedBox(height: 20),
-                        _Actions(
-                          loading: _loading,
-                          isSignUp: _isSignUp,
-                          onSubmit: _submit,
-                          onToggleMode: () => setState(() {
-                            _isSignUp = !_isSignUp;
-                            _error = null;
-                          }),
-                        ),
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -300,15 +334,23 @@ class _Form extends StatelessWidget {
   const _Form({
     required this.emailCtrl,
     required this.passwordCtrl,
+    required this.confirmCtrl,
+    required this.isSignUp,
     required this.obscure,
+    required this.obscureConfirm,
     required this.onToggleObscure,
+    required this.onToggleObscureConfirm,
     required this.onSubmitted,
   });
 
   final TextEditingController emailCtrl;
   final TextEditingController passwordCtrl;
+  final TextEditingController confirmCtrl;
+  final bool isSignUp;
   final bool obscure;
+  final bool obscureConfirm;
   final VoidCallback onToggleObscure;
+  final VoidCallback onToggleObscureConfirm;
   final ValueChanged<String> onSubmitted;
 
   @override
@@ -328,20 +370,125 @@ class _Form extends StatelessWidget {
           hint: 'Contraseña',
           icon: Icons.lock_outline_rounded,
           obscureText: obscure,
-          textInputAction: TextInputAction.done,
-          onSubmitted: onSubmitted,
-          suffix: GestureDetector(
-            onTap: onToggleObscure,
-            child: Icon(
-              obscure
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              color: const Color(0xFF7A7090),
-              size: 20,
+          textInputAction: isSignUp
+              ? TextInputAction.next
+              : TextInputAction.done,
+          onSubmitted: isSignUp ? null : onSubmitted,
+          suffix: _EyeToggle(obscured: obscure, onTap: onToggleObscure),
+        ),
+        if (isSignUp) ...[
+          const SizedBox(height: 12),
+          _GlassField(
+            controller: confirmCtrl,
+            hint: 'Repetir contraseña',
+            icon: Icons.lock_outline_rounded,
+            obscureText: obscureConfirm,
+            textInputAction: TextInputAction.done,
+            onSubmitted: onSubmitted,
+            suffix: _EyeToggle(
+              obscured: obscureConfirm,
+              onTap: onToggleObscureConfirm,
             ),
           ),
-        ),
+        ],
       ],
+    );
+  }
+}
+
+class _EyeToggle extends StatelessWidget {
+  const _EyeToggle({required this.obscured, required this.onTap});
+
+  final bool obscured;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Icon(
+        obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        color: const Color(0xFF7A7090),
+        size: 20,
+      ),
+    );
+  }
+}
+
+class _ConfirmationNotice extends StatelessWidget {
+  const _ConfirmationNotice({required this.onAccept});
+
+  final VoidCallback onAccept;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF1C1628),
+        border: Border.all(color: const Color(0x28FFFFFF), width: 0.6),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.mark_email_read_outlined,
+            color: Color(0xFFC8943A),
+            size: 38,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Revisa tu correo',
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Te hemos enviado un correo para confirmar tu acceso. '
+            'Valida el enlace y vuelve para iniciar sesión.',
+            style: GoogleFonts.manrope(
+              fontSize: 14,
+              height: 1.45,
+              color: const Color(0xFFAA9EBB),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE8913A), Color(0xFFD4721E)],
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(28),
+                  onTap: onAccept,
+                  child: Center(
+                    child: Text(
+                      'Aceptar',
+                      style: GoogleFonts.manrope(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

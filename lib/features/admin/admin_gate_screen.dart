@@ -190,9 +190,11 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                   ),
@@ -209,9 +211,11 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
                   decoration: InputDecoration(
                     labelText: 'Repetir contraseña',
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureConfirm
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                       onPressed: () =>
                           setState(() => _obscureConfirm = !_obscureConfirm),
                     ),
@@ -263,11 +267,23 @@ class _AdminDashboard extends ConsumerWidget {
   const _AdminDashboard();
 
   static const _sections = [
-    (kind: ContentKind.meditation, icon: Icons.self_improvement, color: Color(0xFF7C3AED)),
-    (kind: ContentKind.practice,   icon: Icons.spa,              color: Color(0xFF059669)),
-    (kind: ContentKind.channeling, icon: Icons.waves,            color: Color(0xFF2563EB)),
-    (kind: ContentKind.video,      icon: Icons.play_circle,      color: Color(0xFFDC2626)),
-    (kind: ContentKind.recommendation, icon: Icons.star,         color: Color(0xFFD97706)),
+    (
+      kind: ContentKind.meditation,
+      icon: Icons.self_improvement,
+      color: Color(0xFF7C3AED),
+    ),
+    (kind: ContentKind.practice, icon: Icons.spa, color: Color(0xFF059669)),
+    (kind: ContentKind.channeling, icon: Icons.waves, color: Color(0xFF2563EB)),
+    (
+      kind: ContentKind.video,
+      icon: Icons.play_circle,
+      color: Color(0xFFDC2626),
+    ),
+    (
+      kind: ContentKind.recommendation,
+      icon: Icons.star,
+      color: Color(0xFFD97706),
+    ),
   ];
 
   @override
@@ -287,21 +303,32 @@ class _AdminDashboard extends ConsumerWidget {
           ),
         ],
       ),
-      body: GridView.count(
-        padding: const EdgeInsets.all(16),
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.4,
-        children: [
-          for (final s in _sections)
-            _SectionCard(
-              label: s.kind.label,
-              icon: s.icon,
-              color: s.color,
-              onTap: () => context.push('/admin/${s.kind.databaseValue}'),
-            ),
-        ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 480 ? 3 : 2;
+              return GridView.count(
+                padding: const EdgeInsets.all(20),
+                crossAxisCount: columns,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 0.92,
+                children: [
+                  for (final s in _sections)
+                    _SectionCard(
+                      label: s.kind.label,
+                      icon: s.icon,
+                      color: s.color,
+                      onTap: () =>
+                          context.push('/admin/${s.kind.databaseValue}'),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -404,34 +431,52 @@ class _SectionCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: Theme.of(context).colorScheme.surface,
-            border: Border.all(color: Theme.of(context).dividerColor),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          color.withValues(alpha: 0.85),
+                          color.withValues(alpha: 0.45),
+                        ],
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(icon, color: Colors.white, size: 34),
+                    ),
+                  ),
                 ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.titleSmall,
-                textAlign: TextAlign.center,
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.titleSmall,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -12,6 +12,7 @@ class FreeExperienceApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final direction = ref.watch(designDirectionProvider);
     ref.watch(appBootstrapProvider);
+    ref.watch(contentAutoRefreshProvider);
     return MaterialApp.router(
       title: 'Free Experience',
       debugShowCheckedModeBanner: false,
