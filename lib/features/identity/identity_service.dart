@@ -77,7 +77,11 @@ class SupabaseIdentityService implements IdentityService {
   Future<void> signUp(String email, String password) async {
     final client = _client;
     if (client == null) throw StateError('Supabase no está configurado');
-    await client.auth.signUp(email: email, password: password);
+    // Drop any active anonymous session so this is a clean new-account sign-up.
+    if (client.auth.currentSession != null) {
+      await client.auth.signOut(scope: SignOutScope.local);
+    }
+    await client.auth.signUp(email: email.trim(), password: password);
   }
 
   @override
