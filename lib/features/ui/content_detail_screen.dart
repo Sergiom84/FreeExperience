@@ -10,6 +10,7 @@ import '../content/domain/content_item.dart';
 import '../downloads/download_manager.dart';
 import 'mini_player.dart';
 import 'widgets/content_cover.dart';
+import 'widgets/youtube_embed.dart';
 
 class ContentDetailScreen extends ConsumerWidget {
   const ContentDetailScreen({required this.contentId, super.key});
@@ -203,16 +204,56 @@ class _AudioActions extends ConsumerWidget {
   }
 }
 
-class _VideoSection extends ConsumerStatefulWidget {
+/// Decide cómo mostrar un vídeo: YouTube embebido, enlace externo
+/// (p. ej. Instagram) o el archivo subido a Supabase.
+class _VideoSection extends StatelessWidget {
   const _VideoSection({required this.item});
 
   final ContentItem item;
 
   @override
-  ConsumerState<_VideoSection> createState() => _VideoSectionState();
+  Widget build(BuildContext context) {
+    final url = item.externalUrl;
+    if (url != null && url.trim().isNotEmpty) {
+      final videoId = youtubeVideoId(url);
+      if (videoId != null) return YoutubeEmbed(videoId: videoId);
+      return _ExternalLinkButton(url: url.trim());
+    }
+    return _UploadedVideoSection(item: item);
+  }
 }
 
-class _VideoSectionState extends ConsumerState<_VideoSection> {
+class _ExternalLinkButton extends StatelessWidget {
+  const _ExternalLinkButton({required this.url});
+
+  final String url;
+
+  bool get _isInstagram => url.toLowerCase().contains('instagram.com');
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: () =>
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      icon: Icon(
+        _isInstagram ? Icons.camera_alt_outlined : Icons.arrow_outward,
+      ),
+      label: Text(_isInstagram ? 'Ver en Instagram' : 'Abrir enlace'),
+    );
+  }
+}
+
+class _UploadedVideoSection extends ConsumerStatefulWidget {
+  const _UploadedVideoSection({required this.item});
+
+  final ContentItem item;
+
+  @override
+  ConsumerState<_UploadedVideoSection> createState() =>
+      _UploadedVideoSectionState();
+}
+
+class _UploadedVideoSectionState extends ConsumerState<_UploadedVideoSection> {
   VideoPlayerController? _controller;
   Object? _error;
 

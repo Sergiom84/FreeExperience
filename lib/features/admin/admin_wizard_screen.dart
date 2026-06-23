@@ -100,7 +100,13 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
 
   bool get _canPublish {
     if (_title.text.trim().isEmpty || !_hasCover) return false;
-    if (_hasMediaKind) return _hasMedia;
+    if (_hasMediaKind) {
+      // Un vídeo puede publicarse con archivo subido o con enlace (YouTube/IG).
+      if (widget.kind == ContentKind.video) {
+        return _hasMedia || _url.text.trim().isNotEmpty;
+      }
+      return _hasMedia;
+    }
     return _body.text.trim().isNotEmpty || _url.text.trim().isNotEmpty;
   }
 
@@ -319,6 +325,8 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
       pickedName: _mediaName,
       hasExisting: _existingHasMedia,
       onPick: _pickMedia,
+      urlController: widget.kind == ContentKind.video ? _url : null,
+      onUrlChanged: () => setState(() {}),
     ),
     _Step.preview => _PreviewStep(
       title: _title.text,
@@ -436,12 +444,16 @@ class _MediaStep extends StatelessWidget {
     required this.pickedName,
     required this.hasExisting,
     required this.onPick,
+    this.urlController,
+    this.onUrlChanged,
   });
 
   final bool isVideo;
   final String? pickedName;
   final bool hasExisting;
   final VoidCallback onPick;
+  final TextEditingController? urlController;
+  final VoidCallback? onUrlChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -473,6 +485,30 @@ class _MediaStep extends StatelessWidget {
                 : 'Cambiar archivo',
           ),
         ),
+        if (urlController != null) ...[
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(child: Divider(color: Theme.of(context).dividerColor)),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('o'),
+              ),
+              Expanded(child: Divider(color: Theme.of(context).dividerColor)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: urlController,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            onChanged: (_) => onUrlChanged?.call(),
+            decoration: const InputDecoration(
+              labelText: 'Enlace de YouTube o Instagram',
+              helperText: 'Sube un archivo o pega un enlace, no ambos.',
+            ),
+          ),
+        ],
       ],
     );
   }

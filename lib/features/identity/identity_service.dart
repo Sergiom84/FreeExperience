@@ -53,17 +53,17 @@ class SupabaseIdentityService implements IdentityService {
       _emit(const IdentitySnapshot(status: IdentityStatus.offlineGuest));
       return;
     }
+    // Registro obligatorio: no se crean sesiones anónimas. Si hay una sesión
+    // anónima heredada de versiones previas se descarta para forzar el login.
     final session = client.auth.currentSession;
-    if (session != null) {
+    if (session != null && !session.user.isAnonymous) {
       _emit(_fromSession(session));
       return;
     }
-    try {
-      final response = await client.auth.signInAnonymously();
-      _emit(_fromSession(response.session));
-    } on Object {
-      _emit(const IdentitySnapshot(status: IdentityStatus.offlineGuest));
+    if (session != null && session.user.isAnonymous) {
+      await client.auth.signOut(scope: SignOutScope.local);
     }
+    _emit(const IdentitySnapshot(status: IdentityStatus.offlineGuest));
   }
 
   @override
