@@ -65,10 +65,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _friendlyError(Object e) {
     final msg = e.toString().toLowerCase();
     if (msg.contains('invalid login')) return 'Email o contraseña incorrectos.';
-    if (msg.contains('email already'))
+    if (msg.contains('email already')) {
       return 'Ya existe una cuenta con ese email.';
-    if (msg.contains('weak password'))
+    }
+    if (msg.contains('weak password')) {
       return 'Contraseña muy corta (mín. 6 caracteres).';
+    }
     if (msg.contains('network')) return 'Sin conexión. Verifica tu red.';
     return 'Algo salió mal. Inténtalo de nuevo.';
   }
