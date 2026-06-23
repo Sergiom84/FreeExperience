@@ -1,0 +1,82 @@
+name: TestFlight
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  testflight:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.4'
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build runner
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Import Distribution Certificate
+        env:
+          DIST_CERT_P12_B64: ${{ secrets.DIST_CERT_P12_B64 }}
+          DIST_CERT_PASSWORD: ${{ secrets.DIST_CERT_PASSWORD }}
+          CI_KEYCHAIN_PASSWORD: ${{ secrets.CI_KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/ci.keychain
+          CERT_PATH=$RUNNER_TEMP/dist.p12
+          echo -n "$DIST_CERT_P12_B64" | base64 --decode -o "$CERT_PATH"
+          security create-keychain -p "$CI_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$CI_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Install Provisioning Profile
+        env:
+          APPSTORE_PROFILE_B64: ${{ secrets.APPSTORE_PROFILE_B64 }}
+        run: |
+          PP_PATH=$RUNNER_TEMP/profile.mobileprovision
+          echo -n "$APPSTORE_PROFILE_B64" | base64 --decode -o "$PP_PATH"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          UUID=$(grep -a -A 1 'UUID' "$PP_PATH" | grep -v 'UUID' | tr -d '\n\t\r ' | sed 's/<string>//;s/<\/string>//')
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$UUID".mobileprovision
+
+      - name: Setup ASC API Key
+        env:
+          ASC_KEY_B64: ${{ secrets.ASC_KEY_B64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          mkdir -p ~/.private_keys
+          echo -n "$ASC_KEY_B64" | base64 --decode > ~/.private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Build iOS archive
+        run: |
+          flutter build ipa \
+            --release \
+            --export-options-plist=ios/ExportOptions.plist \
+            --dart-define=APP_ENV=beta
+
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcrun altool --upload-app \
+            --type ios \
+            --file "build/ios/ipa/*.ipa" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --private-key ~/.private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/ci.keychain || true
