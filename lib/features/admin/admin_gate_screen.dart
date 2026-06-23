@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
 import 'admin_controller.dart';
@@ -390,34 +391,6 @@ class AdminSectionScreen extends ConsumerWidget {
   }
 }
 
-const _adminMonths = [
-  'ene',
-  'feb',
-  'mar',
-  'abr',
-  'may',
-  'jun',
-  'jul',
-  'ago',
-  'sep',
-  'oct',
-  'nov',
-  'dic',
-];
-
-String _formatAdminDate(DateTime? date) {
-  if (date == null) return '';
-  final local = date.toLocal();
-  return '${local.day} ${_adminMonths[local.month - 1]} ${local.year}';
-}
-
-String _formatDuration(int seconds) {
-  if (seconds <= 0) return '';
-  final minutes = seconds ~/ 60;
-  final secs = seconds % 60;
-  return '$minutes:${secs.toString().padLeft(2, '0')}';
-}
-
 class _ItemRow extends StatelessWidget {
   const _ItemRow({required this.row, required this.onTap});
 
@@ -432,8 +405,8 @@ class _ItemRow extends StatelessWidget {
       _ => 'Borrador',
     };
     final meta = [
-      _formatAdminDate(row.createdAt),
-      _formatDuration(row.durationSeconds),
+      formatLongDate(row.createdAt),
+      formatClock(row.durationSeconds),
     ].where((value) => value.isNotEmpty).join(' · ');
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 8),

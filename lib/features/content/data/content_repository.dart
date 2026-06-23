@@ -10,6 +10,7 @@ import 'seed_catalog.dart';
 abstract interface class ContentRepository {
   Future<void> bootstrap();
   Future<void> refresh();
+  Future<void> dispose();
   Stream<List<ContentItem>> watchPublished({ContentKind? kind});
   Stream<ContentItem?> watchById(String id);
   Future<ContentItem?> getById(String id);
@@ -27,6 +28,7 @@ class DriftContentRepository implements ContentRepository {
 
   final AppDatabase _database;
   final SupabaseClient? _remote;
+  RealtimeChannel? _channel;
 
   @override
   Future<void> bootstrap() async {
@@ -35,7 +37,31 @@ class DriftContentRepository implements ContentRepository {
     }
     if (_remote != null) {
       unawaited(refresh());
+      _subscribeToRemoteChanges();
     }
+  }
+
+  /// Refresca el catálogo en cuanto el admin publica/edita algo, sin que el
+  /// usuario tenga que reabrir la app ni tirar para refrescar.
+  void _subscribeToRemoteChanges() {
+    final remote = _remote;
+    if (remote == null || _channel != null) return;
+    _channel = remote
+        .channel('public:content_items')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'content_items',
+          callback: (_) => refresh(),
+        )
+        .subscribe();
+  }
+
+  @override
+  Future<void> dispose() async {
+    final channel = _channel;
+    if (channel != null) await _remote?.removeChannel(channel);
+    _channel = null;
   }
 
   @override

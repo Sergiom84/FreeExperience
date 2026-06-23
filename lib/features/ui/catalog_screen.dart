@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/design/design_direction.dart';
 import '../../core/providers.dart';
+import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import 'widgets/content_cover.dart';
 import 'widgets/screen_header.dart';
@@ -45,27 +46,6 @@ class CatalogScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-const _months = [
-  'ene',
-  'feb',
-  'mar',
-  'abr',
-  'may',
-  'jun',
-  'jul',
-  'ago',
-  'sep',
-  'oct',
-  'nov',
-  'dic',
-];
-
-String _formatDate(DateTime? date) {
-  if (date == null) return '';
-  final local = date.toLocal();
-  return '${local.day} ${_months[local.month - 1]} ${local.year}';
 }
 
 class ContentCollection extends ConsumerWidget {
@@ -303,10 +283,10 @@ class _CatalogRow extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
-                    if (_formatDate(item.publishedAt).isNotEmpty) ...[
+                    if (formatLongDate(item.publishedAt).isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        _formatDate(item.publishedAt),
+                        formatLongDate(item.publishedAt),
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ],
@@ -355,7 +335,7 @@ class _Metadata extends StatelessWidget {
     final values = [
       item.author,
       item.durationLabel,
-      _formatDate(item.publishedAt),
+      formatLongDate(item.publishedAt),
     ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
     return Text(values, style: Theme.of(context).textTheme.bodySmall);
   }

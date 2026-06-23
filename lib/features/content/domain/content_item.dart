@@ -1,3 +1,5 @@
+import '../../../core/util/formatters.dart';
+
 enum ContentKind { meditation, practice, channeling, video, recommendation }
 
 extension ContentKindLabel on ContentKind {
@@ -55,9 +57,5 @@ class ContentItem {
 
   bool get hasPlayableMedia => mediaPath?.isNotEmpty ?? false;
 
-  String get durationLabel {
-    if (duration == Duration.zero) return '';
-    final minutes = duration.inMinutes;
-    return '$minutes min';
-  }
+  String get durationLabel => formatMinutes(duration);
 }

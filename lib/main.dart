@@ -14,6 +14,23 @@ import 'core/providers.dart';
 import 'features/player/free_experience_audio_handler.dart';
 
 Future<void> main() async {
+  // El arranque (Supabase, base de datos, audio) corre dentro del appRunner de
+  // Sentry para que cualquier fallo de inicialización quede reportado y no en
+  // silencio. Sin Sentry configurado, se arranca igual.
+  if (AppEnvironment.sentryConfigured) {
+    await SentryFlutter.init((options) {
+      options.dsn = AppEnvironment.sentryDsn;
+      options.environment = AppEnvironment.name;
+      options.sendDefaultPii = false;
+      options.enableAutoSessionTracking = true;
+      options.tracesSampleRate = AppEnvironment.isProduction ? 0.1 : 0.0;
+    }, appRunner: _bootstrapAndRun);
+  } else {
+    await _bootstrapAndRun();
+  }
+}
+
+Future<void> _bootstrapAndRun() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (AppEnvironment.supabaseConfigured) {
@@ -44,23 +61,13 @@ Future<void> main() async {
   }
   await audioHandler.initialize();
 
-  final app = ProviderScope(
-    overrides: [
-      databaseProvider.overrideWithValue(database),
-      audioHandlerProvider.overrideWithValue(audioHandler),
-    ],
-    child: const FreeExperienceApp(),
+  runApp(
+    ProviderScope(
+      overrides: [
+        databaseProvider.overrideWithValue(database),
+        audioHandlerProvider.overrideWithValue(audioHandler),
+      ],
+      child: const FreeExperienceApp(),
+    ),
   );
-
-  if (AppEnvironment.sentryConfigured) {
-    await SentryFlutter.init((options) {
-      options.dsn = AppEnvironment.sentryDsn;
-      options.environment = AppEnvironment.name;
-      options.sendDefaultPii = false;
-      options.enableAutoSessionTracking = true;
-      options.tracesSampleRate = AppEnvironment.isProduction ? 0.1 : 0.0;
-    }, appRunner: () => runApp(app));
-  } else {
-    runApp(app);
-  }
 }

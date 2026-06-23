@@ -39,10 +39,12 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 final contentRepositoryProvider = Provider<ContentRepository>((ref) {
-  return DriftContentRepository(
+  final repository = DriftContentRepository(
     database: ref.watch(databaseProvider),
     remote: ref.watch(supabaseClientProvider),
   );
+  ref.onDispose(repository.dispose);
+  return repository;
 });
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
