@@ -37,6 +37,8 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
   bool _busy = false;
   bool _register = false;
   bool _pendingConfirmation = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   String? _error;
 
   @override
@@ -180,23 +182,39 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
               TextField(
                 controller: _password,
                 enabled: !_busy,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 textInputAction: _register
                     ? TextInputAction.next
                     : TextInputAction.done,
                 onSubmitted: (_) => _register ? null : _submit(),
-                decoration: const InputDecoration(labelText: 'Contraseña'),
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
               ),
               if (_register) ...[
                 const SizedBox(height: 14),
                 TextField(
                   controller: _confirm,
                   enabled: !_busy,
-                  obscureText: true,
+                  obscureText: _obscureConfirm,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Repetir contraseña',
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureConfirm
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
                   ),
                 ),
               ],
