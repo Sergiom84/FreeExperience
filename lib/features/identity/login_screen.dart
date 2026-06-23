@@ -278,7 +278,7 @@ class _Header extends StatelessWidget {
         const _LotusSymbol(size: 22, color: Color(0xFFC8943A)),
         const SizedBox(height: 14),
         Text(
-          'El Portal Interior',
+          'El Portal',
           style: GoogleFonts.cormorantGaramond(
             fontSize: 34,
             fontWeight: FontWeight.w500,
@@ -289,7 +289,7 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Respira. Entra. Conecta contigo.',
+          'Entra. Respira. Conecta.',
           style: GoogleFonts.manrope(
             fontSize: 13.5,
             color: const Color(0xFFAA9EBB),

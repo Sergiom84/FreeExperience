@@ -390,6 +390,34 @@ class AdminSectionScreen extends ConsumerWidget {
   }
 }
 
+const _adminMonths = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+];
+
+String _formatAdminDate(DateTime? date) {
+  if (date == null) return '';
+  final local = date.toLocal();
+  return '${local.day} ${_adminMonths[local.month - 1]} ${local.year}';
+}
+
+String _formatDuration(int seconds) {
+  if (seconds <= 0) return '';
+  final minutes = seconds ~/ 60;
+  final secs = seconds % 60;
+  return '$minutes:${secs.toString().padLeft(2, '0')}';
+}
+
 class _ItemRow extends StatelessWidget {
   const _ItemRow({required this.row, required this.onTap});
 
@@ -403,12 +431,61 @@ class _ItemRow extends StatelessWidget {
       'archived' => 'Archivado',
       _ => 'Borrador',
     };
+    final meta = [
+      _formatAdminDate(row.createdAt),
+      _formatDuration(row.durationSeconds),
+    ].where((value) => value.isNotEmpty).join(' · ');
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
       onTap: onTap,
+      leading: _AdminCover(url: row.coverUrl),
       title: Text(row.title),
-      subtitle: row.author == null ? null : Text(row.author!),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (row.author != null) Text(row.author!),
+          if (meta.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(meta, style: Theme.of(context).textTheme.labelSmall),
+            ),
+        ],
+      ),
+      isThreeLine: row.author != null && meta.isNotEmpty,
       trailing: Text(label, style: Theme.of(context).textTheme.labelMedium),
+    );
+  }
+}
+
+class _AdminCover extends StatelessWidget {
+  const _AdminCover({required this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Icon(
+        Icons.image_outlined,
+        size: 20,
+        color: Theme.of(context).colorScheme.outline,
+      ),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        width: 56,
+        height: 42,
+        child: url == null
+            ? placeholder
+            : Image.network(
+                url!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => placeholder,
+              ),
+      ),
     );
   }
 }

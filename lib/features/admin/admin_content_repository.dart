@@ -15,12 +15,18 @@ class AdminContentRow {
     required this.title,
     required this.status,
     this.author,
+    this.coverUrl,
+    this.createdAt,
+    this.durationSeconds = 0,
   });
 
   final String id;
   final String title;
   final String status;
   final String? author;
+  final String? coverUrl;
+  final DateTime? createdAt;
+  final int durationSeconds;
 }
 
 /// Full snapshot of an existing item, used to prefill the editor.
@@ -85,19 +91,28 @@ class AdminContentRepository {
   Future<List<AdminContentRow>> listByKind(ContentKind kind) async {
     final rows = await _remote
         .from('content_items')
-        .select('id, title, status, author')
+        .select(
+          'id, title, status, author, cover_path, duration_seconds, created_at',
+        )
         .eq('kind', kind.databaseValue)
         .order('sort_order');
-    return rows
-        .map(
-          (row) => AdminContentRow(
-            id: row['id'] as String,
-            title: row['title'] as String,
-            status: row['status'] as String,
-            author: row['author'] as String?,
-          ),
-        )
-        .toList();
+    return rows.map((row) {
+      final coverPath = row['cover_path'] as String?;
+      final created = row['created_at'] as String?;
+      return AdminContentRow(
+        id: row['id'] as String,
+        title: row['title'] as String,
+        status: row['status'] as String,
+        author: row['author'] as String?,
+        coverUrl: (coverPath == null || coverPath.isEmpty)
+            ? null
+            : (coverPath.startsWith('http')
+                  ? coverPath
+                  : coverPublicUrl(coverPath)),
+        createdAt: created == null ? null : DateTime.tryParse(created),
+        durationSeconds: row['duration_seconds'] as int? ?? 0,
+      );
+    }).toList();
   }
 
   Future<AdminContentDetail> getDetail(String id) async {
