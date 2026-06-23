@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/admin_gate_screen.dart';
 import '../../features/admin/admin_wizard_screen.dart';
 import '../../features/content/domain/content_item.dart';
+import '../../features/identity/identity_service.dart';
 import '../../features/identity/login_screen.dart';
 import '../../features/ui/app_shell.dart';
 import '../../features/ui/catalog_screen.dart';
@@ -13,10 +15,30 @@ import '../../features/ui/full_player_screen.dart';
 import '../../features/ui/inspiration_screen.dart';
 import '../../features/ui/legal_screen.dart';
 import '../../features/ui/profile_screen.dart';
+import '../providers.dart';
+
+class _AuthNotifier extends ChangeNotifier {
+  _AuthNotifier(Ref ref) {
+    ref.listen(identityProvider, (prev, next) => notifyListeners());
+  }
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final authNotifier = _AuthNotifier(ref);
+
   final router = GoRouter(
     initialLocation: '/login',
+    refreshListenable: authNotifier,
+    redirect: (context, state) {
+      final identity = ref.read(identityProvider).asData?.value;
+      final isLinked = identity?.status == IdentityStatus.linked;
+      final onLogin = state.matchedLocation == '/login';
+      final onLegal = state.matchedLocation.startsWith('/legal/');
+
+      if (!isLinked && !onLogin && !onLegal) return '/login';
+      if (isLinked && onLogin) return '/meditar';
+      return null;
+    },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       StatefulShellRoute.indexedStack(
@@ -108,6 +130,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(authNotifier.dispose);
   ref.onDispose(router.dispose);
   return router;
 });
