@@ -17,8 +17,11 @@ abstract interface class IdentityService {
   IdentitySnapshot get current;
   Stream<IdentitySnapshot> get changes;
   Future<void> bootstrap();
+  Future<void> signInWithPassword(String email, String password);
+  Future<void> signUp(String email, String password);
   Future<void> linkEmail(String email);
   Future<void> linkApple();
+  Future<void> signOut();
   Future<void> deleteAccount();
 }
 
@@ -64,6 +67,28 @@ class SupabaseIdentityService implements IdentityService {
   }
 
   @override
+  Future<void> signInWithPassword(String email, String password) async {
+    final client = _client;
+    if (client == null) throw StateError('Supabase no está configurado');
+    await client.auth.signInWithPassword(email: email, password: password);
+  }
+
+  @override
+  Future<void> signUp(String email, String password) async {
+    final client = _client;
+    if (client == null) throw StateError('Supabase no está configurado');
+    await client.auth.signUp(email: email, password: password);
+  }
+
+  @override
+  Future<void> signOut() async {
+    final client = _client;
+    if (client == null) return;
+    await client.auth.signOut(scope: SignOutScope.local);
+    _emit(const IdentitySnapshot(status: IdentityStatus.offlineGuest));
+  }
+
+  @override
   Future<void> linkEmail(String email) async {
     final client = _client;
     if (client == null) throw StateError('Supabase no está configurado');
@@ -76,7 +101,7 @@ class SupabaseIdentityService implements IdentityService {
     if (client == null) throw StateError('Supabase no está configurado');
     final response = await client.auth.getLinkIdentityUrl(
       OAuthProvider.apple,
-      redirectTo: 'com.freeexperience.free-experience://auth-callback',
+      redirectTo: 'com.freeexperience.app://auth-callback',
     );
     final opened = await launchUrl(
       Uri.parse(response.url),

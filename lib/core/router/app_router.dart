@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/admin/admin_gate_screen.dart';
 import '../../features/admin/admin_wizard_screen.dart';
 import '../../features/content/domain/content_item.dart';
+import '../../features/identity/login_screen.dart';
 import '../../features/ui/app_shell.dart';
 import '../../features/ui/catalog_screen.dart';
 import '../../features/ui/content_detail_screen.dart';
@@ -15,8 +16,9 @@ import '../../features/ui/profile_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
-    initialLocation: '/meditar',
+    initialLocation: '/login',
     routes: [
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
