@@ -289,7 +289,7 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Entra. Respira. Conecta.',
+          'Respira. Entra. Conecta.',
           style: GoogleFonts.manrope(
             fontSize: 13.5,
             color: const Color(0xFFAA9EBB),
