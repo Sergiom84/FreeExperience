@@ -263,11 +263,11 @@ class _AdminDashboard extends ConsumerWidget {
   const _AdminDashboard();
 
   static const _sections = [
-    ContentKind.meditation,
-    ContentKind.practice,
-    ContentKind.channeling,
-    ContentKind.video,
-    ContentKind.recommendation,
+    (kind: ContentKind.meditation, icon: Icons.self_improvement, color: Color(0xFF7C3AED)),
+    (kind: ContentKind.practice,   icon: Icons.spa,              color: Color(0xFF059669)),
+    (kind: ContentKind.channeling, icon: Icons.waves,            color: Color(0xFF2563EB)),
+    (kind: ContentKind.video,      icon: Icons.play_circle,      color: Color(0xFFDC2626)),
+    (kind: ContentKind.recommendation, icon: Icons.star,         color: Color(0xFFD97706)),
   ];
 
   @override
@@ -288,16 +288,18 @@ class _AdminDashboard extends ConsumerWidget {
         ],
       ),
       body: GridView.count(
-        padding: const EdgeInsets.all(20),
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 1.6,
+        padding: const EdgeInsets.all(16),
+        crossAxisCount: 3,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.4,
         children: [
-          for (final kind in _sections)
+          for (final s in _sections)
             _SectionCard(
-              label: kind.label,
-              onTap: () => context.push('/admin/${kind.databaseValue}'),
+              label: s.kind.label,
+              icon: s.icon,
+              color: s.color,
+              onTap: () => context.push('/admin/${s.kind.databaseValue}'),
             ),
         ],
       ),
@@ -385,9 +387,16 @@ class _ItemRow extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.label, required this.onTap});
+  const _SectionCard({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   final String label;
+  final IconData icon;
+  final Color color;
   final VoidCallback onTap;
 
   @override
@@ -397,14 +406,33 @@ class _SectionCard extends StatelessWidget {
       label: label,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          alignment: Alignment.bottomLeft,
-          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
             color: Theme.of(context).colorScheme.surface,
             border: Border.all(color: Theme.of(context).dividerColor),
           ),
-          child: Text(label, style: Theme.of(context).textTheme.titleLarge),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
