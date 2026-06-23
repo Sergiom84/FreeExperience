@@ -36,6 +36,7 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
   final _confirm = TextEditingController();
   bool _busy = false;
   bool _register = false;
+  bool _pendingConfirmation = false;
   String? _error;
 
   @override
@@ -64,6 +65,13 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
       final auth = ref.read(adminAuthProvider);
       if (_register) {
         await auth.register(_user.text, _password.text);
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _pendingConfirmation = true;
+          });
+        }
+        return;
       }
       await auth.signIn(_user.text, _password.text);
       ref.invalidate(isAdminProvider);
@@ -106,6 +114,45 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
 
   @override
   Widget build(BuildContext context) {
+    if (_pendingConfirmation) {
+      return Scaffold(
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Free Experience',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineLarge,
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    'Hemos enviado un mail a tu cuenta. Confirma tu dirección de correo para poder acceder.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: () => setState(() {
+                      _pendingConfirmation = false;
+                      _register = false;
+                      _password.clear();
+                      _confirm.clear();
+                    }),
+                    child: const Text('Aceptar'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
