@@ -20,6 +20,9 @@ echo "==> Installing dependencies..."
 flutter pub get
 
 echo "==> Building Flutter web (release)..."
-flutter build web --release --web-renderer canvaskit
+flutter build web --release \
+  --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}" \
+  --dart-define=APP_ENV=production
 
 echo "==> Done. Output in build/web/"
