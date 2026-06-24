@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
-  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#b8b6ac"/><stop offset=".55" stop-color="#4f5551"/><stop offset="1" stop-color="#17130f"/></linearGradient><filter id="blur"><feGaussianBlur stdDeviation="38"/></filter></defs>
-  <rect width="800" height="1000" fill="url(#bg)"/><g filter="url(#blur)" opacity=".65" fill="none" stroke="#f2e8da"><path d="M-100 360Q180 190 480 370T920 330" stroke-width="70"/><path d="M-80 590Q220 430 510 620T900 570" stroke-width="48"/></g><path d="M0 760L210 490 390 700 590 430 800 720V1000H0Z" fill="#1d211d" opacity=".78"/>
-</svg>
