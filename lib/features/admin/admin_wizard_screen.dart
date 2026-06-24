@@ -131,22 +131,17 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
     return AdminContentRepository.mediaMime(ext, isVideo: isVideo);
   }
 
-  Future<void> _pickCover() async {
-    final picked = await pickFile('image/*');
-    if (picked == null) return;
+  void _onCoverPicked(Uint8List bytes, String name) {
     setState(() {
-      _coverBytes = picked.bytes;
-      _coverName = picked.name;
+      _coverBytes = bytes;
+      _coverName = name;
     });
   }
 
-  Future<void> _pickMedia() async {
-    final isVideo = widget.kind == ContentKind.video;
-    final picked = await pickFile(isVideo ? 'video/*' : 'audio/*');
-    if (picked == null) return;
+  void _onMediaPicked(Uint8List bytes, String name) {
     setState(() {
-      _mediaBytes = picked.bytes;
-      _mediaName = picked.name;
+      _mediaBytes = bytes;
+      _mediaName = name;
       _detectedDuration = 0;
     });
   }
@@ -294,7 +289,7 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
     _Step.cover => _CoverStep(
       bytes: _coverBytes,
       existingUrl: _existingCoverUrl,
-      onPick: _pickCover,
+      onPicked: _onCoverPicked,
     ),
     _Step.titleAuthor => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -346,7 +341,7 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
       mimeType: _mediaMimeType,
       hasExisting: _existingHasMedia,
       existingSignedUrl: _existingMediaSignedUrl,
-      onPick: _pickMedia,
+      onPicked: _onMediaPicked,
       urlController: widget.kind == ContentKind.video ? _url : null,
       onUrlChanged: () => setState(() {}),
       onDurationDetected: (seconds) {
@@ -440,12 +435,12 @@ class _CoverStep extends StatelessWidget {
   const _CoverStep({
     required this.bytes,
     required this.existingUrl,
-    required this.onPick,
+    required this.onPicked,
   });
 
   final Uint8List? bytes;
   final String? existingUrl;
-  final VoidCallback onPick;
+  final void Function(Uint8List bytes, String name) onPicked;
 
   @override
   Widget build(BuildContext context) {
@@ -453,18 +448,16 @@ class _CoverStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InkWell(
-          onTap: onPick,
-          child: _CoverFrame(
-            bytes: bytes,
-            url: existingUrl,
-            placeholder: const Icon(Icons.add_photo_alternate_outlined),
-          ),
+        _CoverFrame(
+          bytes: bytes,
+          url: existingUrl,
+          placeholder: const Icon(Icons.add_photo_alternate_outlined),
         ),
         const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: onPick,
-          child: Text(hasCover ? 'Cambiar portada' : 'Elegir portada'),
+        FilePickerButton(
+          accept: 'image/*',
+          label: hasCover ? 'Cambiar portada' : 'Elegir portada',
+          onPicked: onPicked,
         ),
       ],
     );
@@ -482,7 +475,7 @@ class _MediaStep extends StatelessWidget {
     required this.pickedBytes,
     required this.mimeType,
     required this.hasExisting,
-    required this.onPick,
+    required this.onPicked,
     this.existingSignedUrl,
     this.urlController,
     this.onUrlChanged,
@@ -495,7 +488,7 @@ class _MediaStep extends StatelessWidget {
   final String mimeType;
   final bool hasExisting;
   final String? existingSignedUrl;
-  final VoidCallback onPick;
+  final void Function(Uint8List bytes, String name) onPicked;
   final TextEditingController? urlController;
   final VoidCallback? onUrlChanged;
   final void Function(int seconds)? onDurationDetected;
@@ -522,13 +515,12 @@ class _MediaStep extends StatelessWidget {
             ),
           ),
         if (label != null) const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: onPick,
-          child: Text(
-            label == null
-                ? (isVideo ? 'Elegir vídeo' : 'Elegir audio')
-                : 'Cambiar archivo',
-          ),
+        FilePickerButton(
+          accept: isVideo ? 'video/*' : 'audio/*',
+          label: label == null
+              ? (isVideo ? 'Elegir vídeo' : 'Elegir audio')
+              : 'Cambiar archivo',
+          onPicked: onPicked,
         ),
         // ----------------------------------------------------------------
         // Preview player — shown when bytes just picked OR existing media

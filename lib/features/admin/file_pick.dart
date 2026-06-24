@@ -6,6 +6,7 @@ import 'file_pick_io.dart'
 
 typedef PickedFile = ({Uint8List bytes, String name});
 
-/// Opens the platform file chooser filtered by [accept] (e.g. 'image/*').
-/// Returns null when the user cancels.
 Future<PickedFile?> pickFile(String accept) => impl.pickFile(accept);
+
+// iOS Safari-safe button: user taps the real HTML input directly.
+typedef FilePickerButton = impl.FilePickerButton;
