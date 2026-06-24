@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/design/design_direction.dart';
+import '../../core/design/design_tokens.dart';
 import '../../core/providers.dart';
 import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
@@ -99,14 +100,9 @@ class _UmbralFeature extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               ContentCover(path: item.coverPath),
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xE6080B0F)],
-                    stops: [0.45, 1],
-                  ),
+                  gradient: AppTokens.coverOverlay(DesignDirection.umbral),
                 ),
               ),
               Positioned(
@@ -143,11 +139,22 @@ class _MateriaFeature extends StatelessWidget {
               label: item.title,
               child: InkWell(
                 onTap: () => context.push('/content/${item.id}'),
-                child: ContentCover(
-                  path: item.coverPath,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(110),
-                  ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ContentCover(
+                      path: item.coverPath,
+                      borderRadius: AppTokens.materiaArc,
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppTokens.coverOverlay(
+                          DesignDirection.materia,
+                        ),
+                        borderRadius: AppTokens.materiaArc,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -165,7 +172,7 @@ class _MateriaFeature extends StatelessWidget {
                     item.kind.label.toUpperCase(),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.primary,
-                      letterSpacing: 1.5,
+                      letterSpacing: AppTokens.labelLetterSpacing,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -206,12 +213,22 @@ class _MineralFeature extends StatelessWidget {
             const SizedBox(height: 14),
             AspectRatio(
               aspectRatio: 1.42,
-              child: ColorFiltered(
-                colorFilter: const ColorFilter.mode(
-                  Color(0x18000000),
-                  BlendMode.saturation,
-                ),
-                child: ContentCover(path: item.coverPath),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColorFiltered(
+                    colorFilter: const ColorFilter.mode(
+                      Color(0x18000000),
+                      BlendMode.saturation,
+                    ),
+                    child: ContentCover(path: item.coverPath),
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppTokens.coverOverlay(DesignDirection.mineral),
+                    ),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -397,9 +414,7 @@ class CatalogLoading extends ConsumerWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(110),
-                  ),
+                  borderRadius: AppTokens.materiaArc,
                 ),
               ),
             ),

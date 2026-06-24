@@ -1,8 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-class ContentCover extends StatelessWidget {
+import '../../../core/design/design_tokens.dart';
+import '../../../core/providers.dart';
+
+class ContentCover extends ConsumerWidget {
   const ContentCover({
     required this.path,
     this.fit = BoxFit.cover,
@@ -15,9 +19,10 @@ class ContentCover extends StatelessWidget {
   final BorderRadius? borderRadius;
 
   @override
-  Widget build(BuildContext context) {
-    final placeholder = ColoredBox(
-      color: Theme.of(context).colorScheme.surface,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final direction = ref.watch(designDirectionProvider);
+    final placeholder = DecoratedBox(
+      decoration: BoxDecoration(gradient: AppTokens.coverGradient(direction)),
       child: const SizedBox.expand(),
     );
     final Widget image;
