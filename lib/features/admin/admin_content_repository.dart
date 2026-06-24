@@ -40,6 +40,7 @@ class AdminContentDetail {
     this.body,
     this.externalUrl,
     this.coverPath,
+    this.mediaSignedUrl,
   });
 
   final ContentKind kind;
@@ -50,6 +51,8 @@ class AdminContentDetail {
   final String? body;
   final String? externalUrl;
   final String? coverPath;
+  /// Signed URL valid 1 h, suitable for inline preview in the editor.
+  final String? mediaSignedUrl;
 }
 
 /// Everything the wizard collects before persisting.
@@ -64,6 +67,7 @@ class ContentDraftInput {
     this.coverFilename,
     this.mediaBytes,
     this.mediaFilename,
+    this.mediaDurationSeconds,
   });
 
   final ContentKind kind;
@@ -75,6 +79,8 @@ class ContentDraftInput {
   final String? coverFilename;
   final Uint8List? mediaBytes;
   final String? mediaFilename;
+  /// Pre-detected duration from the in-wizard preview player (video only).
+  final int? mediaDurationSeconds;
 }
 
 class AdminContentRepository {
@@ -118,10 +124,24 @@ class AdminContentRepository {
   Future<AdminContentDetail> getDetail(String id) async {
     final row = await _remote
         .from('content_items')
-        .select('*, media_assets(kind)')
+        .select('*, media_assets(kind, storage_path)')
         .eq('id', id)
         .single();
     final media = (row['media_assets'] as List<dynamic>? ?? const []);
+    String? mediaSignedUrl;
+    if (media.isNotEmpty) {
+      final storagePath =
+          (media.first as Map<dynamic, dynamic>)['storage_path'] as String?;
+      if (storagePath != null) {
+        try {
+          mediaSignedUrl = await _remote.storage
+              .from('media')
+              .createSignedUrl(storagePath, 3600);
+        } on Object {
+          // preview URL is best-effort
+        }
+      }
+    }
     return AdminContentDetail(
       kind: ContentKindLabel.parse(row['kind'] as String),
       title: row['title'] as String,
@@ -131,6 +151,7 @@ class AdminContentRepository {
       body: row['body'] as String?,
       externalUrl: row['external_url'] as String?,
       coverPath: row['cover_path'] as String?,
+      mediaSignedUrl: mediaSignedUrl,
     );
   }
 
@@ -194,7 +215,7 @@ class AdminContentRepository {
         fallback: isVideo ? 'mp4' : 'mp3',
       );
       final path = '$id/${isVideo ? 'video' : 'audio'}.$ext';
-      final mime = _mediaMime(ext, isVideo: isVideo);
+      final mime = mediaMime(ext, isVideo: isVideo);
       await _remote.storage
           .from('media')
           .uploadBinary(
@@ -202,7 +223,10 @@ class AdminContentRepository {
             input.mediaBytes!,
             fileOptions: FileOptions(contentType: mime, upsert: true),
           );
-      final duration = await _detectDuration(path, isVideo: isVideo);
+      final duration = (input.mediaDurationSeconds != null &&
+              input.mediaDurationSeconds! > 0)
+          ? input.mediaDurationSeconds!
+          : await _detectDuration(path, isVideo: isVideo);
       await _remote.from('media_assets').upsert({
         'content_id': id,
         'kind': isVideo ? 'video' : 'audio',
@@ -297,8 +321,14 @@ class AdminContentRepository {
     _ => 'image/jpeg',
   };
 
-  static String _mediaMime(String ext, {required bool isVideo}) {
-    if (isVideo) return 'video/mp4';
+  static String mediaMime(String ext, {required bool isVideo}) {
+    if (isVideo) {
+      return switch (ext) {
+        'mov' => 'video/quicktime',
+        'webm' => 'video/webm',
+        _ => 'video/mp4',
+      };
+    }
     return switch (ext) {
       'm4a' => 'audio/x-m4a',
       'aac' || 'mp4' => 'audio/mp4',
