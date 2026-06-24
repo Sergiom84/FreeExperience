@@ -2,13 +2,18 @@
 set -o errexit
 
 FLUTTER_DIR="$HOME/.flutter-sdk"
+FLUTTER_VERSION="3.41.7"
 
-if [ ! -d "$FLUTTER_DIR" ]; then
-  echo "==> Installing Flutter (stable)..."
-  git clone https://github.com/flutter/flutter.git \
-    --branch stable \
-    --depth 1 \
-    "$FLUTTER_DIR"
+# Check binary specifically — directory may exist but be incomplete after cache corruption
+if [ ! -f "$FLUTTER_DIR/bin/flutter" ]; then
+  echo "==> Installing Flutter ${FLUTTER_VERSION}..."
+  rm -rf "$FLUTTER_DIR"
+  ARCHIVE="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+  curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/${ARCHIVE}" \
+    -o /tmp/flutter.tar.xz
+  mkdir -p "$FLUTTER_DIR"
+  tar xf /tmp/flutter.tar.xz --strip-components=1 -C "$FLUTTER_DIR"
+  rm /tmp/flutter.tar.xz
 fi
 
 export PATH="$FLUTTER_DIR/bin:$PATH"
