@@ -166,8 +166,9 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
               coverFilename: _coverName,
               mediaBytes: _mediaBytes,
               mediaFilename: _mediaName,
-              mediaDurationSeconds:
-                  _detectedDuration > 0 ? _detectedDuration : null,
+              mediaDurationSeconds: _detectedDuration > 0
+                  ? _detectedDuration
+                  : null,
             ),
             publish: publish,
             existingId: widget.editId,
@@ -619,7 +620,8 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
   void didUpdateWidget(covariant _AdminMediaPlayer old) {
     super.didUpdateWidget(old);
     // Re-init when the source changes (user picks a different file).
-    if (old._bytes != widget._bytes || old._existingUrl != widget._existingUrl) {
+    if (old._bytes != widget._bytes ||
+        old._existingUrl != widget._existingUrl) {
       _cleanup();
       _init();
     }
@@ -759,9 +761,7 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
-              icon: Icon(
-                c.value.isPlaying ? Icons.pause : Icons.play_arrow,
-              ),
+              icon: Icon(c.value.isPlaying ? Icons.pause : Icons.play_arrow),
               onPressed: c.value.isPlaying ? c.pause : c.play,
             ),
             Text(
@@ -804,20 +804,21 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
                   builder: (context, posSnap) {
                     final position = posSnap.data ?? Duration.zero;
                     final duration = player.duration ?? Duration.zero;
-                    final maxMs = duration.inMilliseconds
-                        .toDouble()
-                        .clamp(1.0, double.infinity);
-                    final posMs = position.inMilliseconds
-                        .toDouble()
-                        .clamp(0.0, maxMs);
+                    final maxMs = duration.inMilliseconds.toDouble().clamp(
+                      1.0,
+                      double.infinity,
+                    );
+                    final posMs = position.inMilliseconds.toDouble().clamp(
+                      0.0,
+                      maxMs,
+                    );
                     return Column(
                       children: [
                         Slider(
                           value: posMs,
                           max: maxMs,
-                          onChanged: (ms) => player.seek(
-                            Duration(milliseconds: ms.round()),
-                          ),
+                          onChanged: (ms) =>
+                              player.seek(Duration(milliseconds: ms.round())),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),

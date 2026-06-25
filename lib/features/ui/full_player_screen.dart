@@ -272,7 +272,7 @@ class _ProgressBar extends ConsumerWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Text(
-                    _format(duration),
+                    _remaining(position, duration),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -288,5 +288,14 @@ class _ProgressBar extends ConsumerWidget {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+
+  /// Tiempo que falta para terminar, como "-12:05". "--:--" si aún no se
+  /// conoce la duración.
+  String _remaining(Duration position, Duration duration) {
+    if (duration <= Duration.zero) return '--:--';
+    final left = duration - position;
+    final clamped = left.isNegative ? Duration.zero : left;
+    return '-${_format(clamped)}';
   }
 }

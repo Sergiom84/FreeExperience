@@ -51,6 +51,7 @@ class AdminContentDetail {
   final String? body;
   final String? externalUrl;
   final String? coverPath;
+
   /// Signed URL valid 1 h, suitable for inline preview in the editor.
   final String? mediaSignedUrl;
 }
@@ -79,6 +80,7 @@ class ContentDraftInput {
   final String? coverFilename;
   final Uint8List? mediaBytes;
   final String? mediaFilename;
+
   /// Pre-detected duration from the in-wizard preview player (video only).
   final int? mediaDurationSeconds;
 }
@@ -158,6 +160,26 @@ class AdminContentRepository {
   String coverPublicUrl(String path) =>
       _remote.storage.from('covers').getPublicUrl(path);
 
+  /// Deletes a catalogue item and its storage objects. The media_assets row is
+  /// removed by the ON DELETE CASCADE on content_id; storage cleanup is
+  /// best-effort because orphaned objects are harmless.
+  Future<void> delete(String id) async {
+    await _removeStorageFolder('covers', id);
+    await _removeStorageFolder('media', id);
+    await _remote.from('content_items').delete().eq('id', id);
+  }
+
+  Future<void> _removeStorageFolder(String bucket, String id) async {
+    try {
+      final objects = await _remote.storage.from(bucket).list(path: id);
+      if (objects.isEmpty) return;
+      final paths = objects.map((object) => '$id/${object.name}').toList();
+      await _remote.storage.from(bucket).remove(paths);
+    } on Object {
+      // best-effort cleanup
+    }
+  }
+
   /// Creates ([existingId] null) or updates a catalogue item, then sets its
   /// status. Uploads happen before the status flips to published because the
   /// publish trigger requires a cover and the matching media asset to exist.
@@ -223,7 +245,8 @@ class AdminContentRepository {
             input.mediaBytes!,
             fileOptions: FileOptions(contentType: mime, upsert: true),
           );
-      final duration = (input.mediaDurationSeconds != null &&
+      final duration =
+          (input.mediaDurationSeconds != null &&
               input.mediaDurationSeconds! > 0)
           ? input.mediaDurationSeconds!
           : await _detectDuration(path, isVideo: isVideo);

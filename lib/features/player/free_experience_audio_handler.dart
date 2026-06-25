@@ -57,7 +57,10 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
         AudioSource.file(uri.toFilePath(), tag: item),
       );
     } else {
-      await _player.setAudioSource(AudioSource.uri(uri, tag: item));
+      // Stream remoto: cachea progresivamente a disco mientras reproduce para
+      // evitar cortes/rebuffer en redes inestables (móvil).
+      // ignore: experimental_member_use
+      await _player.setAudioSource(LockCachingAudioSource(uri, tag: item));
     }
   }
 

@@ -370,25 +370,160 @@ class AdminSectionScreen extends ConsumerWidget {
                     ),
                   ],
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: rows.length,
-                  separatorBuilder: (_, _) =>
-                      Divider(height: 1, color: Theme.of(context).dividerColor),
-                  itemBuilder: (context, i) => _ItemRow(
-                    row: rows[i],
-                    onTap: () async {
-                      await context.push(
-                        '/admin/${kind.databaseValue}/editar/${rows[i].id}',
-                      );
-                      ref.invalidate(adminItemsProvider(kind));
-                    },
-                  ),
-                ),
+              : _GroupedAdminList(kind: kind, rows: rows),
         ),
       ),
     );
   }
+}
+
+/// Lista del panel agrupada por mes de creación, con deslizar para eliminar.
+class _GroupedAdminList extends ConsumerWidget {
+  const _GroupedAdminList({required this.kind, required this.rows});
+
+  final ContentKind kind;
+  final List<AdminContentRow> rows;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final entries = _groupByMonth(rows);
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: entries.length,
+      itemBuilder: (context, i) {
+        final entry = entries[i];
+        if (entry is _MonthHeader) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+            child: Text(
+              entry.label,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          );
+        }
+        final row = (entry as _ContentEntry).row;
+        return Dismissible(
+          key: ValueKey(row.id),
+          direction: DismissDirection.endToStart,
+          background: ColoredBox(
+            color: Theme.of(context).colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 24),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Icon(
+                  Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+          ),
+          confirmDismiss: (_) => _confirmAndDelete(context, ref, row),
+          onDismissed: (_) {
+            ref.invalidate(adminItemsProvider(kind));
+            if (context.mounted) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Eliminado')));
+            }
+          },
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _ItemRow(
+                  row: row,
+                  onTap: () async {
+                    await context.push(
+                      '/admin/${kind.databaseValue}/editar/${row.id}',
+                    );
+                    ref.invalidate(adminItemsProvider(kind));
+                  },
+                ),
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _confirmAndDelete(
+    BuildContext context,
+    WidgetRef ref,
+    AdminContentRow row,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar'),
+        content: Text('¿Eliminar "${row.title}"? No se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return false;
+    try {
+      await ref.read(adminContentRepositoryProvider).delete(row.id);
+      return true;
+    } on Object {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No se pudo eliminar')));
+      }
+      return false;
+    }
+  }
+}
+
+sealed class _AdminEntry {
+  const _AdminEntry();
+}
+
+class _MonthHeader extends _AdminEntry {
+  const _MonthHeader(this.label);
+  final String label;
+}
+
+class _ContentEntry extends _AdminEntry {
+  const _ContentEntry(this.row);
+  final AdminContentRow row;
+}
+
+/// Agrupa por mes de creación, más reciente primero; sin fecha al final.
+List<_AdminEntry> _groupByMonth(List<AdminContentRow> rows) {
+  final sorted = [...rows]
+    ..sort((a, b) {
+      final da = a.createdAt;
+      final db = b.createdAt;
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return db.compareTo(da);
+    });
+  final entries = <_AdminEntry>[];
+  String? current;
+  for (final row in sorted) {
+    final label = formatMonthYear(row.createdAt);
+    if (label != current) {
+      current = label;
+      entries.add(_MonthHeader(label));
+    }
+    entries.add(_ContentEntry(row));
+  }
+  return entries;
 }
 
 class _ItemRow extends StatelessWidget {

@@ -116,14 +116,9 @@ class _FilePickerButtonState extends State<FilePickerButton> {
       children: [
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () {},
-            child: Text(widget.label),
-          ),
+          child: OutlinedButton(onPressed: () {}, child: Text(widget.label)),
         ),
-        Positioned.fill(
-          child: HtmlElementView(viewType: _viewType),
-        ),
+        Positioned.fill(child: HtmlElementView(viewType: _viewType)),
       ],
     );
   }
