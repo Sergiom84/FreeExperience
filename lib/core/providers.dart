@@ -13,6 +13,7 @@ import '../features/downloads/download_manager.dart';
 import '../features/identity/identity_service.dart';
 import '../features/player/free_experience_audio_handler.dart';
 import '../features/player/playback_coordinator.dart';
+import '../features/profile/profile_repository.dart';
 
 final databaseProvider = Provider<AppDatabase>(
   (ref) => throw UnimplementedError('AppDatabase override missing'),
@@ -140,6 +141,17 @@ final identityProvider = StreamProvider<IdentitySnapshot>((ref) async* {
   final identity = ref.watch(identityServiceProvider);
   yield identity.current;
   yield* identity.changes;
+});
+
+final profileRepositoryProvider = Provider<ProfileRepository>(
+  (ref) => ProfileRepository(ref.watch(supabaseClientProvider)),
+);
+
+/// Public URL of the signed-in user's avatar. Recomputed when the identity
+/// changes (login/logout) so the home reflects it immediately.
+final avatarUrlProvider = FutureProvider<String?>((ref) async {
+  ref.watch(identityProvider);
+  return ref.watch(profileRepositoryProvider).avatarUrl();
 });
 
 final designDirectionProvider =

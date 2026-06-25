@@ -12,9 +12,14 @@ void main() {
     );
     await tester.pump();
 
+    expect(find.text('Modo local'), findsOneWidget);
+
+    // Las direcciones viven dentro de una sección desplegable.
+    await tester.tap(find.text('Dirección visual'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Umbral nocturno'), findsOneWidget);
     expect(find.text('Materia quieta'), findsOneWidget);
     expect(find.text('Silencio mineral'), findsOneWidget);
-    expect(find.text('Modo local'), findsOneWidget);
   });
 }

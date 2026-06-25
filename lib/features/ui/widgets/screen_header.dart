@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class ScreenHeader extends StatelessWidget {
+import '../../../core/providers.dart';
+
+class ScreenHeader extends ConsumerWidget {
   const ScreenHeader({required this.title, super.key});
 
   final String title;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final avatarUrl = ref.watch(avatarUrlProvider).value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -25,11 +29,7 @@ class ScreenHeader extends StatelessWidget {
                 onPressed: () => context.push('/favorites'),
                 icon: const Icon(Icons.bookmark_border),
               ),
-              IconButton(
-                tooltip: 'Perfil',
-                onPressed: () => context.push('/profile'),
-                icon: const Icon(Icons.person_outline),
-              ),
+              _ProfileButton(avatarUrl: avatarUrl),
             ],
           ),
         ),
@@ -37,6 +37,45 @@ class ScreenHeader extends StatelessWidget {
         Text(title, style: Theme.of(context).textTheme.displayMedium),
         const SizedBox(height: 22),
       ],
+    );
+  }
+}
+
+class _ProfileButton extends StatelessWidget {
+  const _ProfileButton({required this.avatarUrl});
+
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (avatarUrl == null) {
+      return IconButton(
+        tooltip: 'Perfil',
+        onPressed: () => context.push('/profile'),
+        icon: const Icon(Icons.person_outline),
+      );
+    }
+    return Semantics(
+      button: true,
+      label: 'Perfil',
+      child: InkWell(
+        onTap: () => context.push('/profile'),
+        customBorder: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: ClipOval(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: Image.network(
+                avatarUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const Icon(Icons.person_outline),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
