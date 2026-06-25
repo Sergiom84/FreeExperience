@@ -41,6 +41,8 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Free Experience necesita acceso a la red local para detectar la conectividad.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Free Experience necesita acceso a tus fotos para elegir la portada del contenido.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

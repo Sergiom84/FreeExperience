@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/design/design_direction.dart';
 import '../../core/providers.dart';
+import '../admin/admin_controller.dart';
 import '../identity/identity_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -39,6 +40,7 @@ class ProfileScreen extends ConsumerWidget {
           ],
           const SizedBox(height: 38),
           _AccountActions(identity: identity),
+          const _AdminEntry(),
           const SizedBox(height: 38),
           Text(
             'Información',
@@ -64,6 +66,27 @@ class ProfileScreen extends ConsumerWidget {
             onTap: () => context.push('/legal/wellbeing'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AdminEntry extends ConsumerWidget {
+  const _AdminEntry();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(isAdminProvider).value ?? false;
+    if (!isAdmin) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: () => context.push('/admin'),
+          icon: const Icon(Icons.admin_panel_settings_outlined),
+          label: const Text('Administración'),
+        ),
       ),
     );
   }
