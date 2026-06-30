@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/providers.dart';
+import '../content/domain/content_item.dart';
+
 /// Clave de preferencia: el usuario ya escuchó la introducción de bienvenida.
 const introSeenPrefKey = 'intro_seen';
 
@@ -138,10 +141,22 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
   }
 
   Future<void> _playIntro() async {
-    // TODO(fase 2): reproducir el audio de Extras > Introducción y, al
-    // terminar, marcar como visto. Por ahora marca visto y entra a Meditar.
+    // Reproduce el último audio publicado en Extras > Introducción (si existe),
+    // marca la intro como vista (local + perfil) y entra a Meditaciones. El
+    // audio continúa en el mini reproductor.
+    final intros = ref.read(contentByKindProvider(ContentKind.intro)).value;
+    final intro = intros
+        ?.where((item) => item.hasPlayableMedia)
+        .cast<ContentItem?>()
+        .firstWhere((_) => true, orElse: () => null);
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(introSeenPrefKey, true);
+    unawaited(ref.read(profileRepositoryProvider).setIntroSeen());
+
+    if (intro != null) {
+      await ref.read(playbackCoordinatorProvider).play(intro);
+    }
     if (mounted) context.go('/meditar');
   }
 

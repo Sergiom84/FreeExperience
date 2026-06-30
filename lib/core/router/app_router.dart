@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/admin_extras_screen.dart';
 import '../../features/admin/admin_gate_screen.dart';
 import '../../features/admin/admin_wizard_screen.dart';
 import '../../features/content/domain/content_item.dart';
@@ -127,6 +128,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           kind: ContentKindLabel.parse(state.pathParameters['kind']!),
           editId: state.pathParameters['id'],
         ),
+      ),
+      GoRoute(
+        path: '/admin/extras',
+        builder: (context, state) => const AdminExtrasScreen(),
+      ),
+      GoRoute(
+        path: '/admin/extras/introduccion',
+        builder: (context, state) => const AdminIntroScreen(),
       ),
       GoRoute(
         path: '/admin/:kind',

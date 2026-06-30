@@ -1,6 +1,13 @@
 import '../../../core/util/formatters.dart';
 
-enum ContentKind { meditation, practice, channeling, video, recommendation }
+enum ContentKind {
+  meditation,
+  practice,
+  channeling,
+  video,
+  recommendation,
+  intro,
+}
 
 extension ContentKindLabel on ContentKind {
   String get databaseValue => name;
@@ -11,12 +18,14 @@ extension ContentKindLabel on ContentKind {
     ContentKind.channeling => 'Canalizaciones',
     ContentKind.video => 'Vídeos',
     ContentKind.recommendation => 'Recomendaciones',
+    ContentKind.intro => 'Introducción',
   };
 
   bool get isAudio => switch (this) {
     ContentKind.meditation ||
     ContentKind.practice ||
-    ContentKind.channeling => true,
+    ContentKind.channeling ||
+    ContentKind.intro => true,
     _ => false,
   };
 

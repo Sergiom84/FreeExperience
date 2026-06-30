@@ -285,6 +285,8 @@ class _AdminDashboard extends ConsumerWidget {
       icon: Icons.star,
       color: Color(0xFFD97706),
     ),
+    // Extras
+    (kind: ContentKind.intro, icon: Icons.wb_sunny, color: Color(0xFFEA8C2A)),
   ];
 
   @override
@@ -319,11 +321,16 @@ class _AdminDashboard extends ConsumerWidget {
                 children: [
                   for (final s in _sections)
                     _SectionCard(
-                      label: s.kind.label,
+                      label: s.kind == ContentKind.intro
+                          ? 'Extras'
+                          : s.kind.label,
                       icon: s.icon,
                       color: s.color,
-                      onTap: () =>
-                          context.push('/admin/${s.kind.databaseValue}'),
+                      onTap: () => context.push(
+                        s.kind == ContentKind.intro
+                            ? '/admin/extras'
+                            : '/admin/${s.kind.databaseValue}',
+                      ),
                     ),
                 ],
               );

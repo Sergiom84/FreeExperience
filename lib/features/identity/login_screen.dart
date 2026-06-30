@@ -46,9 +46,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// Primera vez (intro no escuchada) → bienvenida; si ya escuchada → meditar.
+  /// El estado vive en el perfil (cross-device); cae al flag local si no hay red.
   Future<void> _goAfterAuth() async {
     final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getBool(introSeenPrefKey) ?? false;
+    var seen = prefs.getBool(introSeenPrefKey) ?? false;
+    try {
+      final remote = await ref.read(profileRepositoryProvider).introSeen();
+      if (remote != null) {
+        seen = remote;
+        await prefs.setBool(introSeenPrefKey, remote);
+      }
+    } on Object {
+      // Sin red: nos quedamos con el flag local.
+    }
     if (!mounted) return;
     context.go(seen ? '/meditar' : '/bienvenida');
   }

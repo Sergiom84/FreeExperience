@@ -56,6 +56,27 @@ class ProfileRepository {
     return (await avatarUrl())!;
   }
 
+  /// Whether the signed-in user already listened to the welcome introduction.
+  /// Null when offline/anonymous so callers can fall back to the local flag.
+  Future<bool?> introSeen() async {
+    final client = _client;
+    final user = client?.auth.currentUser;
+    if (client == null || user == null || user.isAnonymous) return null;
+    final row = await client
+        .from('profiles')
+        .select('intro_seen')
+        .eq('id', user.id)
+        .maybeSingle();
+    return (row?['intro_seen'] as bool?) ?? false;
+  }
+
+  /// Marks the introduction as seen for the signed-in user.
+  Future<void> setIntroSeen() async {
+    final user = _remote.auth.currentUser;
+    if (user == null || user.isAnonymous) return;
+    await _remote.from('profiles').upsert({'id': user.id, 'intro_seen': true});
+  }
+
   Uint8List _prepare(Uint8List bytes) {
     try {
       final decoded = img.decodeImage(bytes);
