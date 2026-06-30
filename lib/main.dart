@@ -31,13 +31,14 @@ Future<void> main() async {
   }
 }
 
-/// Returns true on iOS 27+ where audio_service native init crashes due to an
-/// internal GCD API change ([OS_dispatch_mach_msg _setContext:]).
+/// iOS 27 beta changed an internal GCD API (OS_dispatch_mach_msg) that
+/// AVAudioSession.setCategory() relies on, causing a SIGABRT that Dart
+/// cannot catch. Detect iOS 27+ by extracting the first integer from
+/// Platform.operatingSystemVersion, which can be "27.0" or
+/// "Version 27.0 (Build ...)".
 bool _isIOS27OrAbove() {
-  if (!Platform.isIOS) return false;
-  final match = RegExp(
-    r'Version (\d+)',
-  ).firstMatch(Platform.operatingSystemVersion);
+  if (kIsWeb || !Platform.isIOS) return false;
+  final match = RegExp(r'(\d+)').firstMatch(Platform.operatingSystemVersion);
   return (int.tryParse(match?.group(1) ?? '0') ?? 0) >= 27;
 }
 
@@ -52,17 +53,10 @@ Future<void> _bootstrapAndRun() async {
   }
 
   final database = AppDatabase();
-
-  // iOS 27 beta introduced an API change in GCD (OS_dispatch_mach_msg) that
-  // makes AudioService.init + AudioSession.configure crash natively with
-  // [OS_dispatch_mach_msg _setContext:] unrecognized selector — a SIGABRT that
-  // Dart try/catch cannot intercept. Skip the full native audio stack on iOS
-  // 27+ beta; just_audio still plays audio in-app, only lock-screen controls
-  // and background notifications are unavailable on those builds.
-  final bool skipNativeAudio = !kIsWeb && _isIOS27OrAbove();
-
   final FreeExperienceAudioHandler audioHandler;
-  if (kIsWeb || skipNativeAudio) {
+  final bool skipAudioSession = _isIOS27OrAbove();
+
+  if (kIsWeb) {
     audioHandler = FreeExperienceAudioHandler();
   } else {
     FreeExperienceAudioHandler? handler;
@@ -75,14 +69,20 @@ Future<void> _bootstrapAndRun() async {
           androidNotificationOngoing: true,
           androidStopForegroundOnPause: true,
         ),
-      );
+      ).timeout(const Duration(seconds: 5));
     } catch (_) {
       handler = FreeExperienceAudioHandler();
     }
     audioHandler = handler;
-  }
-  if (!skipNativeAudio) {
-    await audioHandler.initialize();
+    // initialize() calls AVAudioSession.setCategory() which triggers a native
+    // SIGABRT on iOS 27 beta — skip it entirely on those builds.
+    // just_audio handles audio routing internally; only interruption callbacks
+    // are absent on these builds.
+    if (!skipAudioSession) {
+      try {
+        await audioHandler.initialize();
+      } catch (_) {}
+    }
   }
 
   runApp(

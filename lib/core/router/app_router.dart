@@ -16,6 +16,7 @@ import '../../features/ui/inspiration_screen.dart';
 import '../../features/ui/legal_screen.dart';
 import '../../features/ui/profile_screen.dart';
 import '../../features/ui/welcome_screen.dart';
+import '../../features/ui/welcome_sunset_screen.dart';
 import '../providers.dart';
 
 class _AuthNotifier extends ChangeNotifier {
@@ -37,13 +38,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final onLegal = state.matchedLocation.startsWith('/legal/');
 
       if (!isLinked && !onLogin && !onLegal) return '/login';
-      if (isLinked && onLogin) return '/bienvenida';
+      // La primera pantalla (bienvenida vs meditar) la decide LoginScreen según
+      // si ya se escuchó la introducción; aquí solo sacamos del login.
+      if (isLinked && onLogin) return '/meditar';
       return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/bienvenida',
+        builder: (context, state) => const WelcomeSunsetScreen(),
+      ),
+      GoRoute(
+        path: '/bienvenida-orbita',
         builder: (context, state) => const WelcomeScreen(),
       ),
       StatefulShellRoute.indexedStack(

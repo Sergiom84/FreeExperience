@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/providers.dart';
+import '../ui/welcome_sunset_screen.dart' show introSeenPrefKey;
 import 'identity_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -30,7 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final identity = ref.read(identityProvider).asData?.value;
       if (identity?.status == IdentityStatus.linked) {
-        context.go('/bienvenida');
+        _goAfterAuth();
       }
     });
   }
@@ -41,6 +43,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
+  }
+
+  /// Primera vez (intro no escuchada) → bienvenida; si ya escuchada → meditar.
+  Future<void> _goAfterAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(introSeenPrefKey) ?? false;
+    if (!mounted) return;
+    context.go(seen ? '/meditar' : '/bienvenida');
   }
 
   Future<void> _submit() async {
@@ -68,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       await svc.signInWithPassword(email, password);
-      if (mounted) context.go('/bienvenida');
+      if (mounted) await _goAfterAuth();
     } catch (e) {
       setState(() => _error = _friendlyError(e));
     } finally {
