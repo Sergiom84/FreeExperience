@@ -97,7 +97,16 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: Theme.of(context).textTheme.titleLarge),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
               if (_canEdit) ...[
                 const SizedBox(height: 4),
                 GestureDetector(

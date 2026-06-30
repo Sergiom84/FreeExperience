@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -30,6 +31,16 @@ Future<void> main() async {
   }
 }
 
+/// Returns true on iOS 27+ where audio_service native init crashes due to an
+/// internal GCD API change ([OS_dispatch_mach_msg _setContext:]).
+bool _isIOS27OrAbove() {
+  if (!Platform.isIOS) return false;
+  final match = RegExp(
+    r'Version (\d+)',
+  ).firstMatch(Platform.operatingSystemVersion);
+  return (int.tryParse(match?.group(1) ?? '0') ?? 0) >= 27;
+}
+
 Future<void> _bootstrapAndRun() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -41,25 +52,38 @@ Future<void> _bootstrapAndRun() async {
   }
 
   final database = AppDatabase();
-  // audio_service no ofrece integración con el sistema en web; allí se
-  // construye el handler directamente (just_audio reproduce igual). En móvil
-  // se conserva AudioService.init para notificaciones y reproducción en
-  // segundo plano.
+
+  // iOS 27 beta introduced an API change in GCD (OS_dispatch_mach_msg) that
+  // makes AudioService.init + AudioSession.configure crash natively with
+  // [OS_dispatch_mach_msg _setContext:] unrecognized selector — a SIGABRT that
+  // Dart try/catch cannot intercept. Skip the full native audio stack on iOS
+  // 27+ beta; just_audio still plays audio in-app, only lock-screen controls
+  // and background notifications are unavailable on those builds.
+  final bool skipNativeAudio = !kIsWeb && _isIOS27OrAbove();
+
   final FreeExperienceAudioHandler audioHandler;
-  if (kIsWeb) {
+  if (kIsWeb || skipNativeAudio) {
     audioHandler = FreeExperienceAudioHandler();
   } else {
-    audioHandler = await AudioService.init(
-      builder: FreeExperienceAudioHandler.new,
-      config: const AudioServiceConfig(
-        androidNotificationChannelId: 'com.freeexperience.audio',
-        androidNotificationChannelName: 'Reproducción',
-        androidNotificationOngoing: true,
-        androidStopForegroundOnPause: true,
-      ),
-    );
+    FreeExperienceAudioHandler? handler;
+    try {
+      handler = await AudioService.init(
+        builder: FreeExperienceAudioHandler.new,
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'com.freeexperience.audio',
+          androidNotificationChannelName: 'Reproducción',
+          androidNotificationOngoing: true,
+          androidStopForegroundOnPause: true,
+        ),
+      );
+    } catch (_) {
+      handler = FreeExperienceAudioHandler();
+    }
+    audioHandler = handler;
   }
-  await audioHandler.initialize();
+  if (!skipNativeAudio) {
+    await audioHandler.initialize();
+  }
 
   runApp(
     ProviderScope(

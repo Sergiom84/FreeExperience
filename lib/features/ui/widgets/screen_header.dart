@@ -23,6 +23,13 @@ class ScreenHeader extends ConsumerWidget {
                 'Free Experience',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Inicio',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => context.go('/bienvenida'),
+                icon: const Icon(Icons.home_outlined, size: 20),
+              ),
               const Spacer(),
               IconButton(
                 tooltip: 'Guardados',

@@ -168,17 +168,29 @@ class _MateriaFeature extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.kind.label.toUpperCase(),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      letterSpacing: AppTokens.labelLetterSpacing,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      item.kind.label.toUpperCase(),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        letterSpacing: AppTokens.labelLetterSpacing,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.headlineMedium,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      item.title,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _Metadata(item: item),

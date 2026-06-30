@@ -30,7 +30,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final identity = ref.read(identityProvider).asData?.value;
       if (identity?.status == IdentityStatus.linked) {
-        context.go('/meditar');
+        context.go('/bienvenida');
       }
     });
   }
@@ -68,7 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       await svc.signInWithPassword(email, password);
-      if (mounted) context.go('/meditar');
+      if (mounted) context.go('/bienvenida');
     } catch (e) {
       setState(() => _error = _friendlyError(e));
     } finally {

@@ -32,6 +32,13 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
 
   Duration get position => _player.position;
 
+  /// Modo de bucle actual (off / repetir pista). Lo consume el reproductor
+  /// maximizado para pintar el icono de repetición.
+  Stream<LoopMode> get loopMode => _player.loopModeStream;
+
+  Future<void> setLoop(bool enabled) =>
+      _player.setLoopMode(enabled ? LoopMode.one : LoopMode.off);
+
   Future<void> initialize() async {
     final session = await AudioSession.instance;
     await session.configure(const AudioSessionConfiguration.speech());

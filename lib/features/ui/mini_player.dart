@@ -25,6 +25,7 @@ class MiniPlayer extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Divider(height: 1, color: Theme.of(context).dividerColor),
                   _MiniSeekBar(duration: item.duration ?? Duration.zero),
                   ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: 60),
@@ -94,6 +95,7 @@ class MiniPlayer extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  Divider(height: 1, color: Theme.of(context).dividerColor),
                 ],
               ),
             );
@@ -112,31 +114,70 @@ class _MiniSeekBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final handler = ref.watch(audioHandlerProvider);
+    final scheme = Theme.of(context).colorScheme;
     return StreamBuilder<Duration>(
       stream: AudioService.position,
       builder: (context, snapshot) {
+        final position = snapshot.data ?? Duration.zero;
         final max = duration.inMilliseconds
             .toDouble()
             .clamp(1, double.infinity)
             .toDouble();
-        final value = (snapshot.data ?? Duration.zero).inMilliseconds
+        final value = position.inMilliseconds
             .toDouble()
             .clamp(0, max)
             .toDouble();
-        return SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 2,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-          ),
-          child: Slider(
-            value: value,
-            max: max,
-            onChanged: (milliseconds) =>
-                handler.seek(Duration(milliseconds: milliseconds.round())),
-          ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                activeTrackColor: scheme.primary,
+                inactiveTrackColor: scheme.onSurface.withValues(alpha: 0.22),
+                thumbColor: scheme.primary,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              ),
+              child: Slider(
+                value: value,
+                max: max,
+                onChanged: (milliseconds) =>
+                    handler.seek(Duration(milliseconds: milliseconds.round())),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _format(position),
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                  Text(
+                    _remaining(position, duration),
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
+  }
+
+  String _format(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  String _remaining(Duration position, Duration duration) {
+    if (duration <= Duration.zero) return '--:--';
+    final left = duration - position;
+    final clamped = left.isNegative ? Duration.zero : left;
+    return '-${_format(clamped)}';
   }
 }
