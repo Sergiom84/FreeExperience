@@ -144,15 +144,27 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     // Reproduce el último audio publicado en Extras > Introducción (si existe),
     // marca la intro como vista (local + perfil) y entra a Meditaciones. El
     // audio continúa en el mini reproductor.
-    final intros = ref.read(contentByKindProvider(ContentKind.intro)).value;
-    final intro = intros
-        ?.where((item) => item.hasPlayableMedia)
-        .cast<ContentItem?>()
-        .firstWhere((_) => true, orElse: () => null);
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(introSeenPrefKey, true);
     unawaited(ref.read(profileRepositoryProvider).setIntroSeen());
+
+    ContentItem? intro;
+    try {
+      // Asegura que el catálogo local tiene la intro recién publicada y espera
+      // el primer valor del stream (ref.read(.value) puede ser null sin watch).
+      await ref.read(contentRepositoryProvider).refresh();
+      final intros = await ref.read(
+        contentByKindProvider(ContentKind.intro).future,
+      );
+      for (final item in intros) {
+        if (item.hasPlayableMedia) {
+          intro = item;
+          break;
+        }
+      }
+    } on Object {
+      // Sin red o sin intro publicada: entra directo a Meditaciones.
+    }
 
     if (intro != null) {
       await ref.read(playbackCoordinatorProvider).play(intro);
