@@ -48,11 +48,13 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
   late final AnimationController _clouds;
   late final AnimationController _sunCycle;
   late final AnimationController _oceanTime;
+  late final AnimationController _introProgress;
   ui.FragmentShader? _ocean;
   Timer? _cometTimer;
   final _rnd = math.Random();
   final List<_CometData> _comets = [];
   int _cometId = 0;
+  bool _introLoading = false;
 
   @override
   void initState() {
@@ -78,6 +80,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
       duration: const Duration(seconds: 120),
       upperBound: 120,
     );
+    _introProgress = AnimationController(vsync: this);
     _loadShader();
   }
 
@@ -141,21 +144,21 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
   }
 
   Future<void> _playIntro() async {
-    // Reproduce el último audio publicado en Extras > Introducción (si existe),
-    // marca la intro como vista (local + perfil) y entra a Meditaciones. El
-    // audio continúa en el mini reproductor.
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(introSeenPrefKey, true);
-    unawaited(ref.read(profileRepositoryProvider).setIntroSeen());
-
+    if (_introLoading) return;
+    setState(() => _introLoading = true);
+    // Reproduce el último audio publicado en Extras > Introducción (si existe).
+    // just_audio completa play() al terminar, y entonces se marca como vista y
+    // se entra a Meditaciones.
     ContentItem? intro;
     try {
-      // Asegura que el catálogo local tiene la intro recién publicada y espera
-      // el primer valor del stream (ref.read(.value) puede ser null sin watch).
+      // Asegura que el catálogo local tiene la intro recién publicada. Usa el
+      // stream directamente (no el caché del provider) para evitar datos
+      // obsoletos en caso de que el provider ya tuviera una emisión anterior.
       await ref.read(contentRepositoryProvider).refresh();
-      final intros = await ref.read(
-        contentByKindProvider(ContentKind.intro).future,
-      );
+      final intros = await ref
+          .read(contentRepositoryProvider)
+          .watchPublished(kind: ContentKind.intro)
+          .first;
       for (final item in intros) {
         if (item.hasPlayableMedia) {
           intro = item;
@@ -163,11 +166,62 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
         }
       }
     } on Object {
-      // Sin red o sin intro publicada: entra directo a Meditaciones.
+      // Sin red o sin intro publicada: se informa y no se marca como vista.
     }
 
-    if (intro != null) {
+    if (intro == null) {
+      if (mounted) {
+        _introProgress.stop();
+        _introProgress.reset();
+        setState(() => _introLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No hay una introducción publicada en Extras.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final duration = intro.duration > Duration.zero
+          ? intro.duration
+          : const Duration(minutes: 1);
+      _introProgress
+        ..duration = duration
+        ..reset()
+        ..forward();
       await ref.read(playbackCoordinatorProvider).play(intro);
+    } on Object {
+      if (mounted) {
+        _introProgress.stop();
+        _introProgress.reset();
+        setState(() => _introLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo reproducir la introducción.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(introSeenPrefKey, true);
+      await ref.read(profileRepositoryProvider).setIntroSeen();
+    } on Object {
+      if (mounted) {
+        _introProgress.stop();
+        _introProgress.reset();
+        setState(() => _introLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo guardar la introducción como vista.'),
+          ),
+        );
+      }
+      return;
     }
     if (mounted) context.go('/meditar');
   }
@@ -180,6 +234,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     _clouds.dispose();
     _sunCycle.dispose();
     _oceanTime.dispose();
+    _introProgress.dispose();
     _ocean?.dispose();
     super.dispose();
   }
@@ -227,7 +282,11 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
               ),
               // Sol-reproductor (capa sobre el océano)
               AnimatedBuilder(
-                animation: Listenable.merge([_sunCycle, _breath]),
+                animation: Listenable.merge([
+                  _sunCycle,
+                  _breath,
+                  _introProgress,
+                ]),
                 builder: (context, _) {
                   // El sol desciende lentamente hacia el horizonte y vuelve.
                   final sunY = reduceMotion
@@ -246,7 +305,12 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
                         height: sunSize,
                         child: Transform.scale(
                           scale: scale,
-                          child: _Sun(size: sunSize, onPlay: _playIntro),
+                          child: _Sun(
+                            size: sunSize,
+                            onPlay: _playIntro,
+                            progress: _introProgress.value,
+                            showingProgress: _introLoading,
+                          ),
                         ),
                       ),
                     ],
@@ -340,16 +404,32 @@ class _Greeting extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 28),
-      child: Text(
-        'Te damos la bienvenida',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 0.5,
-          shadows: [Shadow(blurRadius: 16, color: Color(0x99000000))],
-        ),
+      child: Column(
+        children: [
+          Text(
+            'Te damos la bienvenida',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.5,
+              shadows: [Shadow(blurRadius: 16, color: Color(0x99000000))],
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Dale al play',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xE6FFFFFF),
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.2,
+              shadows: [Shadow(blurRadius: 14, color: Color(0x99000000))],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -358,49 +438,106 @@ class _Greeting extends StatelessWidget {
 // ─── Sun ─────────────────────────────────────────────────────────────────────
 
 class _Sun extends StatelessWidget {
-  const _Sun({required this.size, required this.onPlay});
+  const _Sun({
+    required this.size,
+    required this.onPlay,
+    required this.progress,
+    required this.showingProgress,
+  });
 
   final double size;
   final VoidCallback onPlay;
+  final double progress;
+  final bool showingProgress;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const RadialGradient(
-          colors: [
-            Color(0xFFFFF7D6),
-            Color(0xFFFFD24A),
-            Color(0xFFFF8A2B),
-            Color(0xFFE9531A),
-          ],
-          stops: [0.0, 0.35, 0.7, 1.0],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF8A2B).withValues(alpha: 0.55),
-            blurRadius: 70,
-            spreadRadius: 18,
+    return Stack(
+      clipBehavior: Clip.none,
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: [
+                Color(0xFFFFF7D6),
+                Color(0xFFFFD24A),
+                Color(0xFFFF8A2B),
+                Color(0xFFE9531A),
+              ],
+              stops: [0.0, 0.35, 0.7, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF8A2B).withValues(alpha: 0.55),
+                blurRadius: 70,
+                spreadRadius: 18,
+              ),
+              BoxShadow(
+                color: const Color(0xFFFFD24A).withValues(alpha: 0.4),
+                blurRadius: 30,
+                spreadRadius: 4,
+              ),
+            ],
           ),
-          BoxShadow(
-            color: const Color(0xFFFFD24A).withValues(alpha: 0.4),
-            blurRadius: 30,
-            spreadRadius: 4,
-          ),
-        ],
-      ),
-      child: IconButton(
-        tooltip: 'Comenzar',
-        onPressed: onPlay,
-        icon: Icon(
-          Icons.play_arrow_rounded,
-          color: const Color(0xFF5A2400),
-          size: size * 0.4,
         ),
-      ),
+        if (showingProgress)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _IntroProgressRingPainter(progress: progress),
+              ),
+            ),
+          ),
+        IconButton(
+          tooltip: 'Comenzar',
+          onPressed: onPlay,
+          icon: Icon(
+            Icons.play_arrow_rounded,
+            color: const Color(0xFF5A2400),
+            size: size * 0.4,
+          ),
+        ),
+      ],
     );
   }
+}
+
+class _IntroProgressRingPainter extends CustomPainter {
+  const _IntroProgressRingPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = math.max(4.0, size.shortestSide * 0.055);
+    final rect = Offset.zero & size;
+    final insetRect = rect.deflate(stroke / 2);
+    const startAngle = -math.pi / 2;
+    final sweepAngle = math.pi * 2 * progress.clamp(0.0, 1.0);
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0x66B63A24);
+    final active = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = const SweepGradient(
+        startAngle: startAngle,
+        endAngle: startAngle + math.pi * 2,
+        colors: [Color(0xFFE35B32), Color(0xFFB63A24), Color(0xFFE35B32)],
+      ).createShader(insetRect);
+
+    canvas.drawArc(insetRect, 0, math.pi * 2, false, track);
+    canvas.drawArc(insetRect, startAngle, sweepAngle, false, active);
+  }
+
+  @override
+  bool shouldRepaint(covariant _IntroProgressRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 // ─── Comet ─────────────────────────────────────────────────────────────────────
