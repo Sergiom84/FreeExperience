@@ -45,7 +45,7 @@ dependencies:
   audio_session: ^0.2.3
   dio: ^5.9.2
   path_provider: ^2.1.6
-  connectivity_plus: ^7.1.1
+  connectivity_plus: 7.0.0
   video_player: ^2.11.1
   youtube_player_iframe: ^5.2.1
   sentry_flutter: ^9.22.0
