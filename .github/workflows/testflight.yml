@@ -78,12 +78,27 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          xcrun altool --upload-app \
+          set -euo pipefail
+          IPA_PATH=$(find build/ios/ipa -maxdepth 1 -name "*.ipa" | head -n1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "::error::No .ipa found in build/ios/ipa"
+            exit 1
+          fi
+          echo "Uploading $IPA_PATH"
+          set +e
+          OUTPUT=$(xcrun altool --upload-app \
             --type ios \
-            --file "build/ios/ipa/*.ipa" \
+            --file "$IPA_PATH" \
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER_ID" \
-            --private-key ~/.private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+            --private-key ~/.private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 2>&1)
+          EXIT_CODE=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $EXIT_CODE -ne 0 ] || echo "$OUTPUT" | grep -q "ERROR"; then
+            echo "::error::altool reported an error during upload"
+            exit 1
+          fi
 
       - name: Cleanup keychain
         if: always()
