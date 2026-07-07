@@ -298,4 +298,5 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 | 2026-07-07 | Creación del documento y revisión inicial | Hecho |
 | 2026-07-07 | Correcciones P0 (11 puntos) + cuenta atrás en la bienvenida | Hecho |
 | 2026-07-07 | Correcciones P1 (16 puntos) + test de formatters | Hecho |
-| 2026-07-07 | Merge a `main` | Hecho |
+| 2026-07-07 | CI: el push trigger apuntaba a `main` pero la rama es `master` | Hecho |
+| 2026-07-07 | Merge a `master` (la rama principal del repo) | Hecho |
