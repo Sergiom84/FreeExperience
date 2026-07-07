@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/sync/sync_service.dart';
+import '../../../core/util/app_log.dart';
 import '../domain/content_item.dart';
 import 'seed_catalog.dart';
 
@@ -83,7 +84,9 @@ class DriftContentRepository implements ContentRepository {
           .map((row) => _fromRemote(Map<String, dynamic>.from(row)))
           .toList();
       await _database.replacePublishedFromRemote(items.map(_toCompanion));
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      // Sin red se sigue sirviendo el catálogo local.
+      reportError(error, stackTrace, context: 'ContentRepository.refresh');
       return;
     }
   }

@@ -6,8 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/providers.dart';
+import '../../core/util/app_log.dart';
 import '../content/domain/content_item.dart';
 import '../downloads/download_manager.dart';
+import 'catalog_screen.dart' show CatalogError;
 import 'mini_player.dart';
 import 'widgets/content_cover.dart';
 import 'widgets/youtube_embed.dart';
@@ -31,8 +33,11 @@ class ContentDetailScreen extends ConsumerWidget {
       body: item.when(
         loading: () =>
             const Center(child: CircularProgressIndicator.adaptive()),
-        error: (error, stackTrace) =>
-            const Center(child: Text('No disponible')),
+        error: (error, stackTrace) => Center(
+          child: CatalogError(
+            onRetry: () => ref.invalidate(contentByIdProvider(contentId)),
+          ),
+        ),
         data: (content) {
           if (content == null) {
             return const Center(child: Text('No disponible'));
@@ -135,7 +140,12 @@ class _AudioActions extends ConsumerWidget {
                       }
                       try {
                         await ref.read(playbackCoordinatorProvider).play(item);
-                      } on Object {
+                      } on Object catch (error, stackTrace) {
+                        reportError(
+                          error,
+                          stackTrace,
+                          context: 'ContentDetail.play',
+                        );
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -221,6 +231,24 @@ class _VideoSection extends StatelessWidget {
   }
 }
 
+/// Abre un enlace externo e informa si no se pudo (antes el fallo era mudo).
+Future<void> _openExternal(BuildContext context, String url) async {
+  var opened = false;
+  try {
+    opened = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+  } on Object catch (error, stackTrace) {
+    reportError(error, stackTrace, context: 'ContentDetail.openExternal');
+  }
+  if (!opened && context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('No se pudo abrir el enlace')));
+  }
+}
+
 class _ExternalLinkButton extends StatelessWidget {
   const _ExternalLinkButton({required this.url});
 
@@ -231,8 +259,7 @@ class _ExternalLinkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilledButton.icon(
-      onPressed: () =>
-          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      onPressed: () => _openExternal(context, url),
       icon: Icon(
         _isInstagram ? Icons.camera_alt_outlined : Icons.arrow_outward,
       ),
@@ -271,20 +298,26 @@ class _UploadedVideoSectionState extends ConsumerState<_UploadedVideoSection> {
         await controller.dispose();
         return;
       }
-      controller.addListener(_onVideoUpdate);
       setState(() => _controller = controller);
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'UploadedVideo.initialize');
       if (mounted) setState(() => _error = error);
     }
   }
 
-  void _onVideoUpdate() {
-    if (mounted) setState(() {});
+  void _togglePlayback(VideoPlayerController controller) {
+    if (controller.value.isPlaying) {
+      controller.pause();
+    } else {
+      // El vídeo no pasa por el coordinador de audio: se pausa a mano lo que
+      // esté sonando para que no suenen los dos a la vez.
+      ref.read(audioHandlerProvider).pause();
+      controller.play();
+    }
   }
 
   @override
   void dispose() {
-    _controller?.removeListener(_onVideoUpdate);
     _controller?.dispose();
     super.dispose();
   }
@@ -311,18 +344,15 @@ class _UploadedVideoSectionState extends ConsumerState<_UploadedVideoSection> {
           child: VideoPlayer(controller),
         ),
         const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: () {
-            if (controller.value.isPlaying) {
-              controller.pause();
-            } else {
-              controller.play();
-            }
-          },
-          icon: Icon(
-            controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+        // Solo el botón escucha al controlador: antes un listener global
+        // reconstruía toda la sección en cada frame del vídeo.
+        ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: controller,
+          builder: (context, value, _) => FilledButton.icon(
+            onPressed: () => _togglePlayback(controller),
+            icon: Icon(value.isPlaying ? Icons.pause : Icons.play_arrow),
+            label: Text(value.isPlaying ? 'Pausar' : 'Reproducir'),
           ),
-          label: Text(controller.value.isPlaying ? 'Pausar' : 'Reproducir'),
         ),
       ],
     );
@@ -344,10 +374,7 @@ class _RecommendationSection extends StatelessWidget {
         if (item.externalUrl != null) ...[
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: () => launchUrl(
-              Uri.parse(item.externalUrl!),
-              mode: LaunchMode.externalApplication,
-            ),
+            onPressed: () => _openExternal(context, item.externalUrl!),
             icon: const Icon(Icons.arrow_outward),
             label: const Text('Abrir'),
           ),

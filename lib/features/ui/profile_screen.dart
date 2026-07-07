@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/design/design_direction.dart';
 import '../../core/providers.dart';
+import '../../core/util/app_log.dart';
 import '../admin/admin_controller.dart';
 import '../admin/file_pick.dart';
 import '../identity/identity_service.dart';
@@ -62,7 +63,8 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
           context,
         ).showSnackBar(const SnackBar(content: Text('Foto actualizada')));
       }
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'Profile.changePhoto');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No se pudo subir la foto')),
@@ -417,33 +419,10 @@ class _AccountActions extends ConsumerWidget {
   }
 
   Future<void> _linkEmail(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
     final email = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Vincular email'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.done,
-          autocorrect: false,
-          decoration: const InputDecoration(labelText: 'Email'),
-          onSubmitted: (value) => Navigator.pop(context, value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Vincular'),
-          ),
-        ],
-      ),
+      builder: (context) => const _EmailDialog(),
     );
-    controller.dispose();
     if (email == null || email.trim().isEmpty || !context.mounted) return;
     await _runAction(
       context,
@@ -484,12 +463,58 @@ class _AccountActions extends ConsumerWidget {
   ) async {
     try {
       await action();
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'Profile.action');
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(errorMessage)));
     }
+  }
+}
+
+/// El diálogo es dueño de su TextEditingController: antes se liberaba nada
+/// más cerrar showDialog y la transición de salida aún podía usarlo.
+class _EmailDialog extends StatefulWidget {
+  const _EmailDialog();
+
+  @override
+  State<_EmailDialog> createState() => _EmailDialogState();
+}
+
+class _EmailDialogState extends State<_EmailDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Vincular email'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.done,
+        autocorrect: false,
+        decoration: const InputDecoration(labelText: 'Email'),
+        onSubmitted: (value) => Navigator.pop(context, value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text),
+          child: const Text('Vincular'),
+        ),
+      ],
+    );
   }
 }
 

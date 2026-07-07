@@ -1,11 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image/image.dart' as img;
 import 'package:just_audio/just_audio.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/providers.dart';
+import '../../core/util/app_log.dart';
+import '../../core/util/image_prep.dart';
 import '../content/domain/content_item.dart';
 
 /// Lightweight view of a catalogue row for the admin list (any status).
@@ -105,18 +106,13 @@ class AdminContentRepository {
         .eq('kind', kind.databaseValue)
         .order('sort_order');
     return rows.map((row) {
-      final coverPath = row['cover_path'] as String?;
       final created = row['created_at'] as String?;
       return AdminContentRow(
         id: row['id'] as String,
         title: row['title'] as String,
         status: row['status'] as String,
         author: row['author'] as String?,
-        coverUrl: (coverPath == null || coverPath.isEmpty)
-            ? null
-            : (coverPath.startsWith('http')
-                  ? coverPath
-                  : coverPublicUrl(coverPath)),
+        coverUrl: resolveCoverUrl(row['cover_path'] as String?),
         createdAt: created == null ? null : DateTime.tryParse(created),
         durationSeconds: row['duration_seconds'] as int? ?? 0,
       );
@@ -139,8 +135,9 @@ class AdminContentRepository {
           mediaSignedUrl = await _remote.storage
               .from('media')
               .createSignedUrl(storagePath, 3600);
-        } on Object {
+        } on Object catch (error, stackTrace) {
           // preview URL is best-effort
+          reportError(error, stackTrace, context: 'getDetail.signedUrl');
         }
       }
     }
@@ -157,16 +154,24 @@ class AdminContentRepository {
     );
   }
 
-  String coverPublicUrl(String path) =>
-      _remote.storage.from('covers').getPublicUrl(path);
+  /// URL completa de una portada: los cover_path absolutos (http) se respetan
+  /// tal cual; las rutas de storage pasan por getPublicUrl. Única fuente para
+  /// el listado y el editor (antes cada uno resolvía por su cuenta).
+  String? resolveCoverUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    return _remote.storage.from('covers').getPublicUrl(path);
+  }
 
   /// Deletes a catalogue item and its storage objects. The media_assets row is
-  /// removed by the ON DELETE CASCADE on content_id; storage cleanup is
-  /// best-effort because orphaned objects are harmless.
+  /// removed by the ON DELETE CASCADE on content_id. The row goes first: if it
+  /// fails, nothing was cleaned; storage cleanup afterwards is best-effort
+  /// because orphaned objects are harmless (the reverse order could leave a
+  /// published item pointing at deleted media).
   Future<void> delete(String id) async {
+    await _remote.from('content_items').delete().eq('id', id);
     await _removeStorageFolder('covers', id);
     await _removeStorageFolder('media', id);
-    await _remote.from('content_items').delete().eq('id', id);
   }
 
   Future<void> _removeStorageFolder(String bucket, String id) async {
@@ -175,10 +180,36 @@ class AdminContentRepository {
       if (objects.isEmpty) return;
       final paths = objects.map((object) => '$id/${object.name}').toList();
       await _remote.storage.from(bucket).remove(paths);
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // best-effort cleanup
+      reportError(error, stackTrace, context: 'removeStorageFolder:$bucket');
     }
   }
+
+  /// Inserta la fila en borrador y devuelve su id. Separado de [submit] para
+  /// que el asistente pueda conservar el id si una subida posterior falla y el
+  /// reintento no cree un segundo borrador huérfano.
+  Future<String> createDraft(ContentDraftInput input) async {
+    final nextOrder = await _nextSortOrder(input.kind);
+    final inserted = await _remote
+        .from('content_items')
+        .insert({
+          ..._fieldsFor(input),
+          'kind': input.kind.databaseValue,
+          'status': 'draft',
+          'sort_order': nextOrder,
+        })
+        .select('id')
+        .single();
+    return inserted['id'] as String;
+  }
+
+  Map<String, Object?> _fieldsFor(ContentDraftInput input) => {
+    'title': input.title.trim(),
+    'author': _trimToNull(input.author),
+    'body': _trimToNull(input.body),
+    'external_url': _trimToNull(input.externalUrl),
+  };
 
   /// Creates ([existingId] null) or updates a catalogue item, then sets its
   /// status. Uploads happen before the status flips to published because the
@@ -188,30 +219,12 @@ class AdminContentRepository {
     required bool publish,
     String? existingId,
   }) async {
-    final fields = {
-      'title': input.title.trim(),
-      'author': _trimToNull(input.author),
-      'body': _trimToNull(input.body),
-      'external_url': _trimToNull(input.externalUrl),
-    };
-
-    final String id;
-    if (existingId == null) {
-      final nextOrder = await _nextSortOrder(input.kind);
-      final inserted = await _remote
+    final id = existingId ?? await createDraft(input);
+    if (existingId != null) {
+      await _remote
           .from('content_items')
-          .insert({
-            ...fields,
-            'kind': input.kind.databaseValue,
-            'status': 'draft',
-            'sort_order': nextOrder,
-          })
-          .select('id')
-          .single();
-      id = inserted['id'] as String;
-    } else {
-      id = existingId;
-      await _remote.from('content_items').update(fields).eq('id', id);
+          .update(_fieldsFor(input))
+          .eq('id', id);
     }
 
     if (input.coverBytes != null) {
@@ -291,37 +304,26 @@ class AdminContentRepository {
           .createSignedUrl(path, 600);
       final duration = await player.setUrl(url);
       return duration?.inSeconds ?? 0;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'detectDuration');
       return 0;
     } finally {
       await player.dispose();
     }
   }
 
-  /// Decodes, resizes (longest side <= 1600) and re-encodes covers as JPEG so
-  /// they stay well under the bucket limit. Falls back to the original bytes for
-  /// formats the decoder cannot read (e.g. HEIC).
+  /// Prepara la portada con el helper compartido (lado mayor <= 1600, JPEG).
+  /// Para formatos que el decodificador no lee (p. ej. HEIC) se conservan los
+  /// bytes originales con su mime real.
   _PreparedCover _prepareCover(Uint8List bytes, String? filename) {
-    try {
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) return _fallbackCover(bytes, filename);
-      final fits = decoded.width <= 1600 && decoded.height <= 1600;
-      final resized = fits
-          ? decoded
-          : (decoded.width >= decoded.height
-                ? img.copyResize(decoded, width: 1600)
-                : img.copyResize(decoded, height: 1600));
+    final prepared = prepareImage(bytes, maxDimension: 1600);
+    if (prepared != null) {
       return _PreparedCover(
-        bytes: img.encodeJpg(resized, quality: 82),
-        ext: 'jpg',
-        mime: 'image/jpeg',
+        bytes: prepared.bytes,
+        ext: prepared.ext,
+        mime: prepared.mime,
       );
-    } on Object {
-      return _fallbackCover(bytes, filename);
     }
-  }
-
-  _PreparedCover _fallbackCover(Uint8List bytes, String? filename) {
     final ext = _extension(filename, fallback: 'jpg');
     return _PreparedCover(bytes: bytes, ext: ext, mime: _imageMime(ext));
   }
@@ -355,6 +357,10 @@ class AdminContentRepository {
     return switch (ext) {
       'm4a' => 'audio/x-m4a',
       'aac' || 'mp4' => 'audio/mp4',
+      // El picker nativo permite wav/aiff: sin estas entradas se subían como
+      // audio/mpeg y la reproducción podía fallar.
+      'wav' => 'audio/wav',
+      'aiff' || 'aif' => 'audio/aiff',
       _ => 'audio/mpeg',
     };
   }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/util/app_log.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
 import 'file_pick.dart';
@@ -88,8 +89,9 @@ class _AdminIntroScreenState extends ConsumerState<AdminIntroScreen> {
         if (row.id == newId) continue;
         try {
           await repo.delete(row.id);
-        } on Object {
+        } on Object catch (error, stackTrace) {
           // La intro nueva ya está publicada; una antigua huérfana no bloquea.
+          reportError(error, stackTrace, context: 'AdminIntro.deletePrevious');
         }
       }
       ref.invalidate(adminItemsProvider(ContentKind.intro));
@@ -99,7 +101,8 @@ class _AdminIntroScreenState extends ConsumerState<AdminIntroScreen> {
         ).showSnackBar(const SnackBar(content: Text('Introducción publicada')));
         context.pop();
       }
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminIntro.publish');
       if (mounted) setState(() => _error = 'No se pudo publicar');
     } finally {
       if (mounted) setState(() => _busy = false);

@@ -5,6 +5,26 @@ import 'package:url_launcher/url_launcher.dart';
 
 enum IdentityStatus { offlineGuest, anonymous, linked }
 
+/// Causas de fallo de autenticación que la interfaz distingue. Sustituye el
+/// mapeo por substring de e.toString(), que se rompía con cualquier cambio de
+/// mensaje del backend.
+enum IdentityErrorCode {
+  invalidCredentials,
+  emailInUse,
+  weakPassword,
+  network,
+  unknown,
+}
+
+class IdentityException implements Exception {
+  const IdentityException(this.code);
+
+  final IdentityErrorCode code;
+
+  @override
+  String toString() => 'IdentityException(${code.name})';
+}
+
 class IdentitySnapshot {
   const IdentitySnapshot({required this.status, this.userId, this.email});
 
@@ -70,18 +90,40 @@ class SupabaseIdentityService implements IdentityService {
   Future<void> signInWithPassword(String email, String password) async {
     final client = _client;
     if (client == null) throw StateError('Supabase no está configurado');
-    await client.auth.signInWithPassword(email: email, password: password);
+    try {
+      await client.auth.signInWithPassword(email: email, password: password);
+    } on AuthException catch (error) {
+      throw IdentityException(_mapAuthError(error));
+    }
   }
 
   @override
   Future<void> signUp(String email, String password) async {
     final client = _client;
     if (client == null) throw StateError('Supabase no está configurado');
-    // Drop any active anonymous session so this is a clean new-account sign-up.
-    if (client.auth.currentSession != null) {
-      await client.auth.signOut(scope: SignOutScope.local);
+    try {
+      // Drop any active anonymous session so this is a clean new-account
+      // sign-up.
+      if (client.auth.currentSession != null) {
+        await client.auth.signOut(scope: SignOutScope.local);
+      }
+      await client.auth.signUp(email: email.trim(), password: password);
+    } on AuthException catch (error) {
+      throw IdentityException(_mapAuthError(error));
     }
-    await client.auth.signUp(email: email.trim(), password: password);
+  }
+
+  IdentityErrorCode _mapAuthError(AuthException error) {
+    if (error is AuthRetryableFetchException) {
+      return IdentityErrorCode.network;
+    }
+    return switch (error.code) {
+      'invalid_credentials' ||
+      'invalid_grant' => IdentityErrorCode.invalidCredentials,
+      'email_exists' || 'user_already_exists' => IdentityErrorCode.emailInUse,
+      'weak_password' => IdentityErrorCode.weakPassword,
+      _ => IdentityErrorCode.unknown,
+    };
   }
 
   @override

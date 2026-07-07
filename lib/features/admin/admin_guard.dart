@@ -20,8 +20,34 @@ class AdminGuard extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator.adaptive()),
       ),
-      error: (_, _) => const AdminGateScreen(),
+      error: (_, _) => const AdminCheckErrorScreen(),
       data: (isAdmin) => isAdmin ? child : const AdminGateScreen(),
+    );
+  }
+}
+
+/// La comprobación de permiso falló (normalmente sin red): se ofrece
+/// reintentar en vez de expulsar a la pantalla de acceso a un administrador
+/// que ya tenía sesión.
+class AdminCheckErrorScreen extends ConsumerWidget {
+  const AdminCheckErrorScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('No se pudo comprobar el acceso'),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => ref.invalidate(isAdminProvider),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -138,7 +138,7 @@ class PlaybackCoordinator {
   }
 
   void _startProgressTimer() {
-    _progressTimer?.cancel();
+    if (_progressTimer?.isActive ?? false) return;
     _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       unawaited(_persistProgress());
     });
@@ -170,9 +170,15 @@ class PlaybackCoordinator {
         _advancing = true;
         unawaited(skipToNext().whenComplete(() => _advancing = false));
       }
-    } else if (!state.playing &&
-        state.processingState == AudioProcessingState.ready) {
-      unawaited(_persistProgress(synchronize: true));
+    } else if (state.processingState == AudioProcessingState.ready) {
+      if (state.playing) {
+        // Reanudado: vuelve a persistir la posición cada 10 s.
+        _startProgressTimer();
+      } else {
+        // En pausa nada avanza: se guarda una vez y se detiene el timer.
+        _progressTimer?.cancel();
+        unawaited(_persistProgress(synchronize: true));
+      }
     }
   }
 

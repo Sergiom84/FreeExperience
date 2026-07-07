@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/util/app_log.dart';
 import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
@@ -40,6 +41,10 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
   String? _existingCoverUrl;
   bool _existingHasMedia = false;
   String? _existingMediaSignedUrl;
+
+  /// Borrador creado por un intento anterior de guardar: se reutiliza en el
+  /// reintento para no acumular borradores huérfanos si una subida falló.
+  String? _createdId;
 
   int _detectedDuration = 0;
 
@@ -77,15 +82,9 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
       _url.text = detail.externalUrl ?? '';
       _existingHasMedia = detail.hasMedia;
       _existingMediaSignedUrl = detail.mediaSignedUrl;
-      // Igual que en listByKind: un cover_path absoluto (http) se usa tal
-      // cual; solo las rutas de storage pasan por getPublicUrl.
-      final coverPath = detail.coverPath;
-      _existingCoverUrl = (coverPath == null || coverPath.isEmpty)
-          ? null
-          : (coverPath.startsWith('http')
-                ? coverPath
-                : repo.coverPublicUrl(coverPath));
-    } on Object {
+      _existingCoverUrl = repo.resolveCoverUrl(detail.coverPath);
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminWizard.load');
       if (mounted) setState(() => _error = 'No se pudo cargar');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -160,33 +159,32 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
       _error = null;
     });
     try {
-      await ref
-          .read(adminContentRepositoryProvider)
-          .submit(
-            ContentDraftInput(
-              kind: widget.kind,
-              title: _title.text,
-              author: _author.text,
-              body: _body.text,
-              externalUrl: _url.text,
-              coverBytes: _coverBytes,
-              coverFilename: _coverName,
-              mediaBytes: _mediaBytes,
-              mediaFilename: _mediaName,
-              mediaDurationSeconds: _detectedDuration > 0
-                  ? _detectedDuration
-                  : null,
-            ),
-            publish: publish,
-            existingId: widget.editId,
-          );
+      final repo = ref.read(adminContentRepositoryProvider);
+      final input = ContentDraftInput(
+        kind: widget.kind,
+        title: _title.text,
+        author: _author.text,
+        body: _body.text,
+        externalUrl: _url.text,
+        coverBytes: _coverBytes,
+        coverFilename: _coverName,
+        mediaBytes: _mediaBytes,
+        mediaFilename: _mediaName,
+        mediaDurationSeconds: _detectedDuration > 0 ? _detectedDuration : null,
+      );
+      // El borrador se crea (o reutiliza) antes de las subidas: si una subida
+      // falla, el reintento continúa sobre el mismo id.
+      var id = widget.editId ?? _createdId;
+      id ??= _createdId = await repo.createDraft(input);
+      await repo.submit(input, publish: publish, existingId: id);
       ref.invalidate(adminItemsProvider(widget.kind));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(publish ? 'Publicado' : 'Borrador guardado')),
       );
       context.pop();
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminWizard.submit');
       if (mounted) setState(() => _error = 'No se pudo guardar');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -691,7 +689,8 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
           _ready = true;
         });
       }
-    } on Object catch (e) {
+    } on Object catch (e, stackTrace) {
+      reportError(e, stackTrace, context: 'AdminMediaPlayer.init');
       if (!_isStale(generation)) setState(() => _error = e);
     }
   }

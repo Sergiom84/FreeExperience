@@ -136,15 +136,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/admin/extras',
-        builder: (context, state) => const AdminGuard(
-          child: AdminExtrasScreen(),
-        ),
+        builder: (context, state) =>
+            const AdminGuard(child: AdminExtrasScreen()),
       ),
       GoRoute(
         path: '/admin/extras/introduccion',
-        builder: (context, state) => const AdminGuard(
-          child: AdminIntroScreen(),
-        ),
+        builder: (context, state) =>
+            const AdminGuard(child: AdminIntroScreen()),
       ),
       GoRoute(
         path: '/admin/:kind',

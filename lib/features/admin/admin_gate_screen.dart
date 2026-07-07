@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/util/app_log.dart';
 import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
 import 'admin_controller.dart';
+import 'admin_guard.dart';
 
 class AdminGateScreen extends ConsumerWidget {
   const AdminGateScreen({super.key});
@@ -17,7 +19,7 @@ class AdminGateScreen extends ConsumerWidget {
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator.adaptive()),
       ),
-      error: (_, _) => const _AdminLogin(),
+      error: (_, _) => const AdminCheckErrorScreen(),
       data: (isAdmin) =>
           isAdmin ? const _AdminDashboard() : const _AdminLogin(),
     );
@@ -86,7 +88,8 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
         ref.invalidate(isAdminProvider);
         setState(() => _error = 'Cuenta sin permiso de administración');
       }
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminLogin.submit');
       if (mounted) {
         setState(
           () => _error = _register
@@ -499,7 +502,8 @@ class _GroupedAdminListState extends ConsumerState<_GroupedAdminList> {
     try {
       await ref.read(adminContentRepositoryProvider).delete(row.id);
       return true;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminList.delete');
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,

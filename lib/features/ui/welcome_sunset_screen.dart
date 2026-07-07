@@ -5,14 +5,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/providers.dart';
+import '../../core/util/app_log.dart';
 import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
-
-/// Clave de preferencia: el usuario ya escuchó la introducción de bienvenida.
-const introSeenPrefKey = 'intro_seen';
 
 /// Variante de bienvenida: atardecer de playa animado (cielo, sol, olas,
 /// estrellas, cometas) con el sol como botón de entrada y las cuatro
@@ -90,8 +87,9 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
       final program = await ui.FragmentProgram.fromAsset('shaders/ocean.frag');
       if (!mounted) return;
       setState(() => _ocean = program.fragmentShader());
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // Sin shader se conserva el fondo pintado (_SunsetPainter) como respaldo.
+      reportError(error, stackTrace, context: 'WelcomeSunset.loadShader');
     }
   }
 
@@ -156,7 +154,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     // después de dispose lanza una excepción).
     final contentRepository = ref.read(contentRepositoryProvider);
     final coordinator = ref.read(playbackCoordinatorProvider);
-    final profileRepository = ref.read(profileRepositoryProvider);
+    final introSeen = ref.read(introSeenStoreProvider);
 
     ContentItem? intro;
     try {
@@ -173,8 +171,9 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
           break;
         }
       }
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // Sin red o sin intro publicada: se informa y no se marca como vista.
+      reportError(error, stackTrace, context: 'WelcomeSunset.loadIntro');
     }
 
     if (intro == null) {
@@ -200,7 +199,8 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
         ..reset()
         ..forward();
       await coordinator.play(intro);
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'WelcomeSunset.playIntro');
       if (mounted) {
         _introProgress.stop();
         _introProgress.reset();
@@ -215,10 +215,9 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(introSeenPrefKey, true);
-      await profileRepository.setIntroSeen();
-    } on Object {
+      await introSeen.markSeen();
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'WelcomeSunset.markSeen');
       if (mounted) {
         _introProgress.stop();
         _introProgress.reset();
@@ -305,7 +304,8 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
                   final scale = reduceMotion ? 1.0 : 0.97 + breathT * 0.06;
                   // Tiempo restante derivado del mismo controlador que dibuja
                   // el anillo, para que texto y arco avancen siempre a la par.
-                  final introDuration = _introProgress.duration ?? Duration.zero;
+                  final introDuration =
+                      _introProgress.duration ?? Duration.zero;
                   final introRemaining =
                       introDuration * (1 - _introProgress.value);
                   return Stack(

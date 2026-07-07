@@ -96,59 +96,59 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 
 ### P1 — Robustez y mantenimiento
 
-- [ ] **Registrar errores en vez de silenciarlos**: sustituir los `on Object {}`
+- [x] **Registrar errores en vez de silenciarlos**: sustituir los `on Object {}`
   mudos por captura con log a Sentry (`Sentry.captureException`) manteniendo la
   degradación suave. Afecta a sync, content repo, admin, perfil y pantallas.
-- [ ] **`submit` del admin no es atómico ni re-intentable**
+- [x] **`submit` del admin no es atómico ni re-intentable**
   (`admin_content_repository.dart:190-272`): un fallo intermedio deja borradores
   huérfanos y el reintento crea otro. Conservar el id creado y reutilizarlo.
-- [ ] **`delete` borra storage antes que la fila**
+- [x] **`delete` borra storage antes que la fila**
   (`admin_content_repository.dart:166-170`): invertir el orden.
-- [~] **Resolución de URL de portada duplicada e inconsistente**
+- [x] **Resolución de URL de portada duplicada e inconsistente**
   (wizard `_load` vs `listByKind`): centralizar en un método del repositorio;
   hoy editar un ítem con `cover_path` absoluto o de asset rompe la portada.
 - [ ] **Duración de vídeo = 0** (`admin_content_repository.dart:285`): un vídeo
   publicado antes de que el preview termine de inicializar queda con duración 0.
-- [ ] **Mime map sin `wav`/`aiff`** aunque el picker los permite: se suben como
+- [x] **Mime map sin `wav`/`aiff`** aunque el picker los permite: se suben como
   `audio/mpeg`.
-- [ ] **`ProfileRepository.uploadAvatar` termina en `!`**
+- [x] **`ProfileRepository.uploadAvatar` termina en `!`**
   (`profile_repository.dart:56`): NPE potencial; devolver error de dominio.
-- [ ] **`_prepareCover` duplicado** entre `AdminContentRepository` y
+- [x] **`_prepareCover` duplicado** entre `AdminContentRepository` y
   `ProfileRepository`: extraer helper compartido de preparación de imagen.
 - [ ] **Subidas con `withData: true`** (`file_pick_io.dart`): un vídeo grande se
   carga entero en RAM. Valorar subida por streaming desde path en IO.
-- [ ] **Timer de progreso sigue corriendo en pausa**
+- [x] **Timer de progreso sigue corriendo en pausa**
   (`playback_coordinator.dart:140-145`): persiste cada 10 s aunque no se
   reproduzca nada; cancelarlo al pausar y rearmarlo al reanudar.
-- [ ] **`isAdminProvider` devuelve `false` ante cualquier error**
+- [x] **`isAdminProvider` devuelve `false` ante cualquier error**
   (`admin_controller.dart:17-19`): un fallo de red expulsa al admin al login sin
   opción de reintento.
-- [ ] **Flujo "introducción escuchada" repartido entre dos pantallas**:
+- [x] **Flujo "introducción escuchada" repartido entre dos pantallas**:
   `welcome_sunset_screen._playIntro` y `login_screen._goAfterAuth` coordinan por
   su cuenta la doble persistencia (SharedPreferences + `profileRepository`), y
   la constante `introSeenPrefKey` vive en un fichero de pantalla que el login
   importa. Extraer a un controlador/repositorio único (`introSeenProvider`).
-- [ ] **Errores de auth mapeados por substring** (`login_screen.dart:109-120`):
+- [x] **Errores de auth mapeados por substring** (`login_screen.dart:109-120`):
   `_friendlyError` compara contra `e.toString()`; un cambio de mensaje en
   Supabase lo degrada todo a "Algo salió mal". Definir excepciones tipadas en
   `IdentityService`.
-- [ ] **Redirección post-login de un solo disparo**
+- [x] **Redirección post-login de un solo disparo**
   (`login_screen.dart:32-38`): lee `identityProvider` una vez en el post-frame;
   si la sesión se restaura un frame después, el usuario se queda en el login.
   Usar `ref.listen` o el redirect del router.
-- [ ] **`setState` en cada frame de vídeo**
+- [x] **`setState` en cada frame de vídeo**
   (`content_detail_screen.dart:283-285`): el listener del `VideoPlayerController`
   reconstruye toda la sección continuamente solo para el icono play/pausa. Usar
   `ValueListenableBuilder` alrededor del botón.
-- [ ] **El vídeo subido no coordina con la sesión de audio**
+- [x] **El vídeo subido no coordina con la sesión de audio**
   (`content_detail_screen.dart:266-330`): se reproduce fuera del
   `PlaybackCoordinator`, así que el audio de fondo puede seguir sonando debajo.
-- [ ] **Estados de error sin `Reintentar`** en `content_detail_screen.dart:34` y
+- [x] **Estados de error sin `Reintentar`** en `content_detail_screen.dart:34` y
   `favorites_screen.dart:20` (DESIGN.md exige acción de reintento; `CatalogError`
   ya existe y se puede reutilizar).
-- [ ] **`launchUrl` sin comprobar resultado**
+- [x] **`launchUrl` sin comprobar resultado**
   (`content_detail_screen.dart:236,349`): un fallo al abrir el enlace es mudo.
-- [ ] **Controller de diálogo liberado antes de tiempo**
+- [x] **Controller de diálogo liberado antes de tiempo**
   (`profile_screen.dart:420-446`): `_linkEmail` hace `controller.dispose()` al
   volver `showDialog` mientras la transición de salida aún puede construir el
   `TextField`. Mover el controller a un widget con estado propio.
@@ -251,6 +251,45 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
     más reciente.
   - El preview del wizard usa contador de generación (evita que un archivo
     anterior "gane" al nuevo) y ficheros temporales con nombre único en IO.
+- 2026-07-07 — P1 aplicado. Notas de implementación:
+  - `reportError` en `core/util/app_log.dart`: consola en desarrollo y
+    `Sentry.captureException` cuando hay DSN. Aplicado a los ~18 catches que
+    antes tragaban el error (sync, catálogo, admin, perfil, bienvenida,
+    detalle, arranque de audio). La degradación suave se mantiene igual.
+  - `AdminContentRepository.createDraft` separado de `submit`: el wizard
+    conserva el id (`_createdId`) y los reintentos reutilizan el mismo
+    borrador. `delete` borra la fila antes que el storage.
+  - `resolveCoverUrl` centraliza portadas (http absoluto vs ruta de storage)
+    para listado y editor.
+  - `prepareImage` compartido en `core/util/image_prep.dart` (portadas 1600,
+    avatar 512). `uploadAvatar` rechaza formatos no decodificables en vez de
+    subirlos etiquetados como JPEG, y ya no revienta con `!`.
+  - Mime map con `wav`/`aiff`/`aif`.
+  - `isAdminProvider` propaga errores; `AdminCheckErrorScreen` (en
+    `admin_guard.dart`) ofrece Reintentar en vez de expulsar al login.
+  - `IntroSeenStore` (`features/profile/intro_seen_store.dart`) unifica el
+    flag local + remoto; login y bienvenida lo consumen. `introSeenPrefKey`
+    dejó de exportarse desde una pantalla.
+  - Errores de auth tipados (`IdentityException` con `IdentityErrorCode`
+    mapeado desde los códigos de Supabase); el login ya no compara substrings.
+  - Login con `ref.listenManual(identityProvider)` en vez de lectura única
+    post-frame (la restauración tardía de sesión ya no deja al usuario
+    atascado en el login).
+  - Timer de progreso: se detiene al pausar y se rearma al reanudar.
+  - Detalle: error con Reintentar (reutiliza `CatalogError`), botón de vídeo
+    con `ValueListenableBuilder` (adiós al setState por frame), el vídeo
+    subido pausa el audio de fondo al empezar, y `launchUrl` avisa si falla.
+    Guardados: error con Reintentar. Perfil: el diálogo de vincular email es
+    dueño de su controller.
+  - Test nuevo `test/formatters_test.dart` para el reloj de reproducción.
+  - Verificado en local con Flutter 3.41.6: `dart format`, `flutter analyze`
+    (sin avisos) y `flutter test` (todo en verde).
+- 2026-07-07 — Pendientes que requieren decisión de equipo o pruebas en
+  dispositivo (no bloquean el merge): duración de vídeo = 0 si se publica
+  antes de que el preview la detecte, subida por streaming para vídeos
+  grandes (`withData: true`), botón compartir del reproductor (placeholder),
+  troceo de pantallas grandes, tokens de espaciado/paleta única, textos P3 y
+  tests de servicios.
 
 ## 4. Progreso
 
@@ -258,3 +297,5 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 | --- | --- | --- |
 | 2026-07-07 | Creación del documento y revisión inicial | Hecho |
 | 2026-07-07 | Correcciones P0 (11 puntos) + cuenta atrás en la bienvenida | Hecho |
+| 2026-07-07 | Correcciones P1 (16 puntos) + test de formatters | Hecho |
+| 2026-07-07 | Merge a `main` | Hecho |
