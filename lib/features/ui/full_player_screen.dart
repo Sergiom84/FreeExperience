@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../core/providers.dart';
+import '../../core/util/formatters.dart';
 import '../player/free_experience_audio_handler.dart';
 import 'widgets/content_cover.dart';
 
@@ -226,7 +227,7 @@ class _BottomPanel extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  _format(duration),
+                  formatPlaybackClock(duration),
                   style: Theme.of(
                     context,
                   ).textTheme.displaySmall?.copyWith(color: Colors.white),
@@ -262,12 +263,6 @@ class _BottomPanel extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String _format(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
   }
 }
 
@@ -429,13 +424,13 @@ class _ProgressBar extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _format(position),
+                    formatPlaybackClock(position),
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.white70),
                   ),
                   Text(
-                    _remaining(position, duration),
+                    formatPlaybackRemaining(position, duration),
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.white70),
@@ -457,7 +452,7 @@ class _ProgressBar extends ConsumerWidget {
                 value: value,
                 max: max,
                 semanticFormatterCallback: (ms) =>
-                    _format(Duration(milliseconds: ms.round())),
+                    formatPlaybackClock(Duration(milliseconds: ms.round())),
                 onChanged: (milliseconds) =>
                     handler.seek(Duration(milliseconds: milliseconds.round())),
               ),
@@ -466,18 +461,5 @@ class _ProgressBar extends ConsumerWidget {
         );
       },
     );
-  }
-
-  String _format(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
-
-  String _remaining(Duration position, Duration duration) {
-    if (duration <= Duration.zero) return '--:--';
-    final left = duration - position;
-    final clamped = left.isNegative ? Duration.zero : left;
-    return '-${_format(clamped)}';
   }
 }

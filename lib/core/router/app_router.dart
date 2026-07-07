@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/admin/admin_extras_screen.dart';
 import '../../features/admin/admin_gate_screen.dart';
+import '../../features/admin/admin_guard.dart';
 import '../../features/admin/admin_wizard_screen.dart';
 import '../../features/content/domain/content_item.dart';
 import '../../features/identity/identity_service.dart';
@@ -118,29 +119,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/admin/:kind/nuevo',
-        builder: (context, state) => AdminWizardScreen(
-          kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+        builder: (context, state) => AdminGuard(
+          child: AdminWizardScreen(
+            kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/admin/:kind/editar/:id',
-        builder: (context, state) => AdminWizardScreen(
-          kind: ContentKindLabel.parse(state.pathParameters['kind']!),
-          editId: state.pathParameters['id'],
+        builder: (context, state) => AdminGuard(
+          child: AdminWizardScreen(
+            kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+            editId: state.pathParameters['id'],
+          ),
         ),
       ),
       GoRoute(
         path: '/admin/extras',
-        builder: (context, state) => const AdminExtrasScreen(),
+        builder: (context, state) => const AdminGuard(
+          child: AdminExtrasScreen(),
+        ),
       ),
       GoRoute(
         path: '/admin/extras/introduccion',
-        builder: (context, state) => const AdminIntroScreen(),
+        builder: (context, state) => const AdminGuard(
+          child: AdminIntroScreen(),
+        ),
       ),
       GoRoute(
         path: '/admin/:kind',
-        builder: (context, state) => AdminSectionScreen(
-          kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+        builder: (context, state) => AdminGuard(
+          child: AdminSectionScreen(
+            kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+          ),
         ),
       ),
       GoRoute(

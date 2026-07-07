@@ -99,10 +99,8 @@ class _FavoriteButton extends ConsumerWidget {
     final favorite = ref.watch(isFavoriteProvider(contentId)).value ?? false;
     return IconButton(
       tooltip: favorite ? 'Quitar de guardados' : 'Guardar',
-      onPressed: () async {
-        await ref.read(contentRepositoryProvider).toggleFavorite(contentId);
-        await ref.read(syncServiceProvider).synchronize();
-      },
+      onPressed: () =>
+          ref.read(contentRepositoryProvider).toggleFavorite(contentId),
       icon: Icon(favorite ? Icons.bookmark : Icons.bookmark_border),
     );
   }

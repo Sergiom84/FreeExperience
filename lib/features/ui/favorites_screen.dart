@@ -80,12 +80,8 @@ class _FavoriteRow extends ConsumerWidget {
               ),
               IconButton(
                 tooltip: 'Quitar de guardados',
-                onPressed: () async {
-                  await ref
-                      .read(contentRepositoryProvider)
-                      .toggleFavorite(item.id);
-                  await ref.read(syncServiceProvider).synchronize();
-                },
+                onPressed: () =>
+                    ref.read(contentRepositoryProvider).toggleFavorite(item.id),
                 icon: const Icon(Icons.bookmark),
               ),
             ],

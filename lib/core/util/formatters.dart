@@ -57,3 +57,19 @@ String formatClock(int seconds) {
   final secs = seconds % 60;
   return '$minutes:${secs.toString().padLeft(2, '0')}';
 }
+
+/// "05:42" o "1:12:05" si supera la hora — reloj de reproducción compartido
+/// por el reproductor completo, el mini reproductor y la bienvenida.
+String formatPlaybackClock(Duration duration) {
+  final clamped = duration.isNegative ? Duration.zero : duration;
+  final hours = clamped.inHours;
+  final minutes = clamped.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = clamped.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+}
+
+/// "-05:42" — tiempo restante de reproducción. "--:--" sin duración conocida.
+String formatPlaybackRemaining(Duration position, Duration duration) {
+  if (duration <= Duration.zero) return '--:--';
+  return '-${formatPlaybackClock(duration - position)}';
+}

@@ -53,45 +53,45 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 
 ### P0 — Bugs y riesgos reales
 
-- [ ] **`AdminWizardScreen` sin guard de admin**: un enlace profundo a
+- [x] **`AdminWizardScreen` sin guard de admin**: un enlace profundo a
   `/admin/<kind>/nuevo` muestra la UI de autoría completa a cualquier usuario
   (RLS bloquea la escritura, pero la pantalla no debería renderizarse).
   Las otras tres pantallas admin copian el guard a mano; extraer un `AdminGuard`
   y aplicarlo por ruta.
-- [ ] **`AdminIntroScreen._publish` borra antes de subir**
+- [x] **`AdminIntroScreen._publish` borra antes de subir**
   (`admin_extras_screen.dart:71-88`): si la subida falla, la app se queda sin
   introducción. Invertir el orden (subir → publicar → borrar la anterior) y mover
   la transacción a `AdminContentRepository`.
-- [ ] **`pickFile` en web se cuelga si el usuario cancela**
+- [x] **`pickFile` en web se cuelga si el usuario cancela**
   (`file_pick_web.dart:10-47`): el completer nunca se resuelve. Escuchar el
   evento `cancel` del input.
-- [ ] **`setState`/`ref` tras `await` sin comprobar `mounted`**:
+- [x] **`setState`/`ref` tras `await` sin comprobar `mounted`**:
   `admin_extras_screen.dart:97` (catch sin guard), `admin_gate_screen.dart:79-88`
   (`ref` tras await), `admin_wizard_screen.dart:72-80` (controllers tras await).
-- [ ] **`Dismissible` sin retirada síncrona de la fila**
+- [x] **`Dismissible` sin retirada síncrona de la fila**
   (`admin_gate_screen.dart:430-437`): puede lanzar "dismissed Dismissible still
   part of the tree".
-- [ ] **Carrera en el preview del wizard** (`admin_wizard_screen.dart:620-678`):
+- [x] **Carrera en el preview del wizard** (`admin_wizard_screen.dart:620-678`):
   `didUpdateWidget` reinicializa mientras un `initialize()` anterior sigue en
   vuelo; el controller viejo se instala y el nuevo se fuga. Añadir contador de
   generación.
-- [ ] **Nombre fijo del fichero de preview** (`admin_preview_url_io.dart:9`):
+- [x] **Nombre fijo del fichero de preview** (`admin_preview_url_io.dart:9`):
   dos previews consecutivos con la misma extensión se pisan. Usar nombre único.
-- [ ] **Las horas se pierden al formatear duración**: `_format` usa
+- [x] **Las horas se pierden al formatear duración**: `_format` usa
   `inMinutes.remainder(60)`, así que una sesión de 72 min se muestra como
   "12:00". Tres copias privadas (`full_player_screen.dart:267,471`,
   `mini_player.dart:171`). Añadir `formatPlaybackClock` a
   `core/util/formatters.dart` y borrar las copias.
-- [ ] **`ref` tras reproducir la introducción completa sin guard**
+- [x] **`ref` tras reproducir la introducción completa sin guard**
   (`welcome_sunset_screen.dart:194-226`): `_playIntro` espera a que termine el
   audio (minutos) y después usa `ref.read` y `SharedPreferences` sin comprobar
   `mounted`; si el usuario navegó, lanza excepción en el camino feliz.
-- [ ] **Favorito desde el reproductor no sincroniza**: en
+- [x] **Favorito desde el reproductor no sincroniza**: en
   `content_detail_screen.dart:102-105` y `favorites_screen.dart:84-87` se hace
   `toggleFavorite` + `synchronize()`, pero `full_player_screen.dart:305` solo
   hace el toggle. Mover la orquestación al repositorio (un único
   `toggleFavorite` que programe el sync).
-- [ ] **Más `setState` tras `await` sin `mounted`**: `login_screen.dart:92`
+- [x] **Más `setState` tras `await` sin `mounted`**: `login_screen.dart:92`
   (catch de `_submit`), `profile_screen.dart:54-56` (tras el file picker).
 
 ### P1 — Robustez y mantenimiento
@@ -104,7 +104,7 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
   huérfanos y el reintento crea otro. Conservar el id creado y reutilizarlo.
 - [ ] **`delete` borra storage antes que la fila**
   (`admin_content_repository.dart:166-170`): invertir el orden.
-- [ ] **Resolución de URL de portada duplicada e inconsistente**
+- [~] **Resolución de URL de portada duplicada e inconsistente**
   (wizard `_load` vs `listByKind`): centralizar en un método del repositorio;
   hoy editar un ítem con `cover_path` absoluto o de asset rompe la portada.
 - [ ] **Duración de vídeo = 0** (`admin_content_repository.dart:285`): un vídeo
@@ -231,9 +231,30 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 - 2026-07-07 — En este entorno no hay SDK de Flutter, así que `dart format`,
   `flutter analyze` y `flutter test` no se pudieron ejecutar localmente; la CI
   de GitHub los cubre en cada push/PR.
+- 2026-07-07 — P0 aplicado. Notas de implementación:
+  - `AdminGuard` nuevo en `lib/features/admin/admin_guard.dart`, aplicado en el
+    router a todas las rutas `/admin/**`; los guards copiados en las pantallas
+    se retiraron. Cubre también el estado de carga (antes `.value ?? false`
+    mostraba la puerta de login durante la comprobación).
+  - `formatPlaybackClock`/`formatPlaybackRemaining` en `core/util/formatters.dart`
+    sustituyen a las cuatro copias privadas (full player ×2, mini player,
+    wizard admin). Ahora las duraciones de más de una hora se muestran bien.
+  - `toggleFavorite` en `DriftContentRepository` programa el `synchronize()`;
+    los botones de detalle y guardados ya no lo llaman a mano y el del
+    reproductor sincroniza por primera vez.
+  - Bienvenida: además de los arreglos de `ref`/`mounted`, se añadió la cuenta
+    atrás con el tiempo restante del audio dentro del sol mientras se reproduce
+    la introducción, derivada del mismo `AnimationController` que dibuja el
+    anillo (texto y arco avanzan a la par). El anillo no se tocó.
+  - Publicar introducción ahora sube y publica la nueva antes de borrar la
+    anterior; si el borrado antiguo falla, la bienvenida sigue priorizando la
+    más reciente.
+  - El preview del wizard usa contador de generación (evita que un archivo
+    anterior "gane" al nuevo) y ficheros temporales con nombre único en IO.
 
 ## 4. Progreso
 
 | Fecha | Cambio | Estado |
 | --- | --- | --- |
 | 2026-07-07 | Creación del documento y revisión inicial | Hecho |
+| 2026-07-07 | Correcciones P0 (11 puntos) + cuenta atrás en la bienvenida | Hecho |

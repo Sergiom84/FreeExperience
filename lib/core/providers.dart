@@ -43,6 +43,7 @@ final contentRepositoryProvider = Provider<ContentRepository>((ref) {
   final repository = DriftContentRepository(
     database: ref.watch(databaseProvider),
     remote: ref.watch(supabaseClientProvider),
+    sync: ref.watch(syncServiceProvider),
   );
   ref.onDispose(repository.dispose);
   return repository;

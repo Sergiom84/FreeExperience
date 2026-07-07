@@ -6,7 +6,10 @@ import 'package:path_provider/path_provider.dart';
 Future<String> createPreviewUrl(Uint8List bytes, String mimeType) async {
   final dir = await getTemporaryDirectory();
   final ext = _ext(mimeType);
-  final file = File('${dir.path}/admin_preview.$ext');
+  // Nombre único por preview: con un nombre fijo, elegir un segundo archivo
+  // sobrescribía el fichero que el reproductor anterior aún estaba leyendo.
+  final stamp = DateTime.now().microsecondsSinceEpoch;
+  final file = File('${dir.path}/admin_preview_$stamp.$ext');
   await file.writeAsBytes(bytes);
   return file.uri.toString();
 }

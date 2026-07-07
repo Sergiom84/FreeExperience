@@ -52,7 +52,7 @@ class _ProfileHeaderState extends ConsumerState<_ProfileHeader> {
   Future<void> _changePhoto() async {
     if (_busy) return;
     final picked = await pickFile('image/*');
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() => _busy = true);
     try {
       await ref.read(profileRepositoryProvider).uploadAvatar(picked.bytes);

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
+import '../../core/util/formatters.dart';
 
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
@@ -152,11 +153,11 @@ class _MiniSeekBar extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _format(position),
+                    formatPlaybackClock(position),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                   Text(
-                    _remaining(position, duration),
+                    formatPlaybackRemaining(position, duration),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ],
@@ -166,18 +167,5 @@ class _MiniSeekBar extends ConsumerWidget {
         );
       },
     );
-  }
-
-  String _format(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
-
-  String _remaining(Duration position, Duration duration) {
-    if (duration <= Duration.zero) return '--:--';
-    final left = duration - position;
-    final clamped = left.isNegative ? Duration.zero : left;
-    return '-${_format(clamped)}';
   }
 }

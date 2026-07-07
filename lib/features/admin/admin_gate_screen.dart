@@ -77,14 +77,14 @@ class _AdminLoginState extends ConsumerState<_AdminLogin> {
         return;
       }
       await auth.signIn(_user.text, _password.text);
+      if (!mounted) return;
       ref.invalidate(isAdminProvider);
       final isAdmin = await ref.read(isAdminProvider.future);
       if (!isAdmin) {
         await auth.signOut();
+        if (!mounted) return;
         ref.invalidate(isAdminProvider);
-        if (mounted) {
-          setState(() => _error = 'Cuenta sin permiso de administración');
-        }
+        setState(() => _error = 'Cuenta sin permiso de administración');
       }
     } on Object {
       if (mounted) {
@@ -349,8 +349,6 @@ class AdminSectionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final admin = ref.watch(isAdminProvider).value ?? false;
-    if (!admin) return const AdminGateScreen();
     final items = ref.watch(adminItemsProvider(kind));
     return Scaffold(
       appBar: AppBar(title: Text(kind.label)),
@@ -385,15 +383,32 @@ class AdminSectionScreen extends ConsumerWidget {
 }
 
 /// Lista del panel agrupada por mes de creación, con deslizar para eliminar.
-class _GroupedAdminList extends ConsumerWidget {
+class _GroupedAdminList extends ConsumerStatefulWidget {
   const _GroupedAdminList({required this.kind, required this.rows});
 
   final ContentKind kind;
   final List<AdminContentRow> rows;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final entries = _groupByMonth(rows);
+  ConsumerState<_GroupedAdminList> createState() => _GroupedAdminListState();
+}
+
+class _GroupedAdminListState extends ConsumerState<_GroupedAdminList> {
+  // Copia local: la fila descartada debe desaparecer del árbol en el mismo
+  // frame (Dismissible lo exige); el provider se refresca después.
+  late List<AdminContentRow> _rows = widget.rows;
+
+  ContentKind get kind => widget.kind;
+
+  @override
+  void didUpdateWidget(covariant _GroupedAdminList old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.rows, widget.rows)) _rows = widget.rows;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = _groupByMonth(_rows);
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: entries.length,
@@ -427,14 +442,15 @@ class _GroupedAdminList extends ConsumerWidget {
               ),
             ),
           ),
-          confirmDismiss: (_) => _confirmAndDelete(context, ref, row),
+          confirmDismiss: (_) => _confirmAndDelete(context, row),
           onDismissed: (_) {
+            setState(() {
+              _rows = [..._rows]..removeWhere((r) => r.id == row.id);
+            });
             ref.invalidate(adminItemsProvider(kind));
-            if (context.mounted) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Eliminado')));
-            }
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Eliminado')));
           },
           child: Column(
             children: [
@@ -460,7 +476,6 @@ class _GroupedAdminList extends ConsumerWidget {
 
   Future<bool> _confirmAndDelete(
     BuildContext context,
-    WidgetRef ref,
     AdminContentRow row,
   ) async {
     final confirmed = await showDialog<bool>(

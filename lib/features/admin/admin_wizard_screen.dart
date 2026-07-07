@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
 import 'admin_preview_url.dart';
@@ -69,15 +70,21 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
     try {
       final repo = ref.read(adminContentRepositoryProvider);
       final detail = await repo.getDetail(widget.editId!);
+      if (!mounted) return;
       _title.text = detail.title;
       _author.text = detail.author ?? '';
       _body.text = detail.body ?? '';
       _url.text = detail.externalUrl ?? '';
       _existingHasMedia = detail.hasMedia;
       _existingMediaSignedUrl = detail.mediaSignedUrl;
-      _existingCoverUrl = detail.coverPath == null
+      // Igual que en listByKind: un cover_path absoluto (http) se usa tal
+      // cual; solo las rutas de storage pasan por getPublicUrl.
+      final coverPath = detail.coverPath;
+      _existingCoverUrl = (coverPath == null || coverPath.isEmpty)
           ? null
-          : repo.coverPublicUrl(detail.coverPath!);
+          : (coverPath.startsWith('http')
+                ? coverPath
+                : repo.coverPublicUrl(coverPath));
     } on Object {
       if (mounted) setState(() => _error = 'No se pudo cargar');
     } finally {
@@ -610,6 +617,11 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
   bool _ready = false;
   Object? _error;
 
+  // Cada _init incrementa la generación; un initialize() que termina cuando ya
+  // hay otra fuente en curso descarta su controlador en vez de instalarlo
+  // (antes el archivo anterior podía "ganar" al nuevo y fugar el controlador).
+  int _generation = 0;
+
   @override
   void initState() {
     super.initState();
@@ -627,7 +639,10 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
     }
   }
 
+  bool _isStale(int generation) => generation != _generation || !mounted;
+
   Future<void> _init() async {
+    final generation = ++_generation;
     setState(() {
       _ready = false;
       _error = null;
@@ -636,6 +651,10 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
       final String url;
       if (widget._bytes != null) {
         url = await createPreviewUrl(widget._bytes!, widget._mimeType!);
+        if (_isStale(generation)) {
+          revokePreviewUrl(url);
+          return;
+        }
         _blobUrl = url;
       } else {
         url = widget._existingUrl!;
@@ -644,13 +663,13 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
       if (widget.isVideo) {
         final controller = VideoPlayerController.networkUrl(Uri.parse(url));
         await controller.initialize();
-        final duration = controller.value.duration.inSeconds;
-        if (duration > 0) widget.onDurationDetected?.call(duration);
-        controller.addListener(_rebuild);
-        if (!mounted) {
+        if (_isStale(generation)) {
           await controller.dispose();
           return;
         }
+        final duration = controller.value.duration.inSeconds;
+        if (duration > 0) widget.onDurationDetected?.call(duration);
+        controller.addListener(_rebuild);
         setState(() {
           _videoController = controller;
           _ready = true;
@@ -658,26 +677,27 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
       } else {
         final player = AudioPlayer();
         await player.setUrl(url);
+        if (_isStale(generation)) {
+          await player.dispose();
+          return;
+        }
         final duration = player.duration?.inSeconds ?? 0;
         if (duration > 0) widget.onDurationDetected?.call(duration);
         player.playerStateStream.listen((_) {
           if (mounted) setState(() {});
         });
-        if (!mounted) {
-          await player.dispose();
-          return;
-        }
         setState(() {
           _audioPlayer = player;
           _ready = true;
         });
       }
     } on Object catch (e) {
-      if (mounted) setState(() => _error = e);
+      if (!_isStale(generation)) setState(() => _error = e);
     }
   }
 
   void _cleanup() {
+    _generation++;
     final url = _blobUrl;
     if (url != null) {
       revokePreviewUrl(url);
@@ -765,12 +785,12 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
               onPressed: c.value.isPlaying ? c.pause : c.play,
             ),
             Text(
-              _formatDuration(c.value.position),
+              formatPlaybackClock(c.value.position),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const Text(' / '),
             Text(
-              _formatDuration(c.value.duration),
+              formatPlaybackClock(c.value.duration),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -826,11 +846,11 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                _formatDuration(position),
+                                formatPlaybackClock(position),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               Text(
-                                _formatDuration(duration),
+                                formatPlaybackClock(duration),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -890,12 +910,6 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
         );
       },
     );
-  }
-
-  String _formatDuration(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
   }
 }
 

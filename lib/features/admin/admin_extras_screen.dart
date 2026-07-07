@@ -5,18 +5,15 @@ import 'package:go_router/go_router.dart';
 
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
-import 'admin_controller.dart';
-import 'admin_gate_screen.dart';
 import 'file_pick.dart';
 
 /// Tarjeta "Extras" del panel: por ahora solo contiene "Introducción".
+/// El acceso lo protege AdminGuard en la ruta.
 class AdminExtrasScreen extends ConsumerWidget {
   const AdminExtrasScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final admin = ref.watch(isAdminProvider).value ?? false;
-    if (!admin) return const AdminGateScreen();
     return Scaffold(
       appBar: AppBar(title: const Text('Extras')),
       body: ListView(
@@ -67,15 +64,14 @@ class _AdminIntroScreenState extends ConsumerState<AdminIntroScreen> {
     });
     try {
       final repo = ref.read(adminContentRepositoryProvider);
-      // Reemplaza la intro anterior (solo debe existir una publicada).
-      final existing = await repo.listByKind(ContentKind.intro);
-      for (final row in existing) {
-        await repo.delete(row.id);
-      }
+      // Publica la nueva antes de borrar la anterior: si la subida falla, la
+      // app conserva la introducción vigente (antes se borraba primero y un
+      // fallo dejaba la app sin introducción).
+      final previous = await repo.listByKind(ContentKind.intro);
       final cover = await rootBundle.load(
         'assets/images/login_illustration.png',
       );
-      await repo.submit(
+      final newId = await repo.submit(
         ContentDraftInput(
           kind: ContentKind.intro,
           title: 'Introducción',
@@ -86,6 +82,16 @@ class _AdminIntroScreenState extends ConsumerState<AdminIntroScreen> {
         ),
         publish: true,
       );
+      // Solo debe existir una publicada; la limpieza es best-effort porque la
+      // bienvenida ya prioriza la más reciente.
+      for (final row in previous) {
+        if (row.id == newId) continue;
+        try {
+          await repo.delete(row.id);
+        } on Object {
+          // La intro nueva ya está publicada; una antigua huérfana no bloquea.
+        }
+      }
       ref.invalidate(adminItemsProvider(ContentKind.intro));
       if (mounted) {
         ScaffoldMessenger.of(
@@ -93,8 +99,8 @@ class _AdminIntroScreenState extends ConsumerState<AdminIntroScreen> {
         ).showSnackBar(const SnackBar(content: Text('Introducción publicada')));
         context.pop();
       }
-    } on Object catch (e) {
-      setState(() => _error = 'No se pudo publicar: $e');
+    } on Object {
+      if (mounted) setState(() => _error = 'No se pudo publicar');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -102,8 +108,6 @@ class _AdminIntroScreenState extends ConsumerState<AdminIntroScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final admin = ref.watch(isAdminProvider).value ?? false;
-    if (!admin) return const AdminGateScreen();
     final current = ref.watch(adminItemsProvider(ContentKind.intro));
     return Scaffold(
       appBar: AppBar(title: const Text('Introducción')),

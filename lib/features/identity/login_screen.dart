@@ -90,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await svc.signInWithPassword(email, password);
       if (mounted) await _goAfterAuth();
     } catch (e) {
-      setState(() => _error = _friendlyError(e));
+      if (mounted) setState(() => _error = _friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
