@@ -14,8 +14,17 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final identityAsync = ref.watch(identityProvider);
+    // Mientras la identidad se restaura no se muestra "Modo local" como si
+    // fuera un dato: es un estado de carga.
+    if (identityAsync.isLoading && !identityAsync.hasValue) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Perfil')),
+        body: const Center(child: CircularProgressIndicator.adaptive()),
+      );
+    }
     final identity =
-        ref.watch(identityProvider).value ??
+        identityAsync.value ??
         const IdentitySnapshot(status: IdentityStatus.offlineGuest);
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
@@ -436,6 +445,9 @@ class _AccountActions extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar cuenta'),
+        content: const Text(
+          'Se eliminarán tu cuenta y tus datos. No se puede deshacer.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

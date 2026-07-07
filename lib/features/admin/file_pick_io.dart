@@ -25,7 +25,10 @@ Future<({Uint8List bytes, String name})?> pickFile(String accept) async {
     return (FileType.custom, ['mp4', 'mov', 'm4v', 'webm']);
   }
   if (accept.startsWith('audio/')) {
-    return (FileType.custom, ['mp3', 'm4a', 'aac', 'wav', 'aiff', 'mp4']);
+    return (
+      FileType.custom,
+      ['mp3', 'm4a', 'aac', 'wav', 'aiff', 'aif', 'mp4'],
+    );
   }
   return (FileType.any, null);
 }

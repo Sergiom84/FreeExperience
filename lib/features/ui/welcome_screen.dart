@@ -52,6 +52,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   late final AnimationController _breath;
   late final AnimationController _orbit;
   Timer? _phraseTimer;
+  Duration? _phraseInterval;
   int _phrase = 0;
   int? _highlighted;
 
@@ -68,22 +69,31 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
     );
   }
 
-  void _startMotion(bool reduceMotion) {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Aquí y no en build: reacciona a los cambios de reducir movimiento y,
+    // al activarse, detiene las animaciones y re-ajusta la cadencia de las
+    // frases (antes el intervalo quedaba fijado en la primera construcción).
+    _syncMotion(MediaQuery.disableAnimationsOf(context));
+  }
+
+  void _syncMotion(bool reduceMotion) {
     if (reduceMotion) {
+      _breath.stop();
+      _orbit.stop();
       _breath.value = 0.5;
       _orbit.value = 0;
-      _phraseTimer ??= Timer.periodic(
-        const Duration(seconds: 9),
-        (_) => _advancePhrase(),
-      );
-      return;
+    } else {
+      if (!_breath.isAnimating) _breath.repeat(reverse: true);
+      if (!_orbit.isAnimating) _orbit.repeat();
     }
-    if (!_breath.isAnimating) _breath.repeat(reverse: true);
-    if (!_orbit.isAnimating) _orbit.repeat();
-    _phraseTimer ??= Timer.periodic(
-      const Duration(seconds: 7),
-      (_) => _advancePhrase(),
-    );
+    final interval = Duration(seconds: reduceMotion ? 9 : 7);
+    if (_phraseInterval != interval) {
+      _phraseInterval = interval;
+      _phraseTimer?.cancel();
+      _phraseTimer = Timer.periodic(interval, (_) => _advancePhrase());
+    }
   }
 
   void _advancePhrase() {
@@ -121,7 +131,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    _startMotion(reduceMotion);
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(

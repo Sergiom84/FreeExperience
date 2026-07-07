@@ -295,8 +295,11 @@ class AdminContentRepository {
     return (rows.first['sort_order'] as int? ?? 0) + 1;
   }
 
+  /// Duración del archivo recién subido. Vale también para vídeo: el
+  /// reproductor nativo lee la duración del contenedor mp4/mov aunque solo
+  /// consuma la pista de audio. Es el respaldo de cuando el preview del
+  /// asistente no llegó a detectarla antes de publicar.
   Future<int> _detectDuration(String path, {required bool isVideo}) async {
-    if (isVideo) return 0;
     final player = AudioPlayer();
     try {
       final url = await _remote.storage

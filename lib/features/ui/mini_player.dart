@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
-import '../../core/util/formatters.dart';
+import 'widgets/seek_bar.dart';
 
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
@@ -27,7 +27,7 @@ class MiniPlayer extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Divider(height: 1, color: Theme.of(context).dividerColor),
-                  _MiniSeekBar(duration: item.duration ?? Duration.zero),
+                  SeekBar.mini(duration: item.duration ?? Duration.zero),
                   ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: 60),
                     child: Row(
@@ -101,69 +101,6 @@ class MiniPlayer extends ConsumerWidget {
               ),
             );
           },
-        );
-      },
-    );
-  }
-}
-
-class _MiniSeekBar extends ConsumerWidget {
-  const _MiniSeekBar({required this.duration});
-
-  final Duration duration;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final handler = ref.watch(audioHandlerProvider);
-    final scheme = Theme.of(context).colorScheme;
-    return StreamBuilder<Duration>(
-      stream: AudioService.position,
-      builder: (context, snapshot) {
-        final position = snapshot.data ?? Duration.zero;
-        final max = duration.inMilliseconds
-            .toDouble()
-            .clamp(1, double.infinity)
-            .toDouble();
-        final value = position.inMilliseconds
-            .toDouble()
-            .clamp(0, max)
-            .toDouble();
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 3,
-                activeTrackColor: scheme.primary,
-                inactiveTrackColor: scheme.onSurface.withValues(alpha: 0.22),
-                thumbColor: scheme.primary,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-              ),
-              child: Slider(
-                value: value,
-                max: max,
-                onChanged: (milliseconds) =>
-                    handler.seek(Duration(milliseconds: milliseconds.round())),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    formatPlaybackClock(position),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  Text(
-                    formatPlaybackRemaining(position, duration),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ],
-              ),
-            ),
-          ],
         );
       },
     );

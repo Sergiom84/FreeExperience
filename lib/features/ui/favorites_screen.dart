@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
+import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import 'catalog_screen.dart' show CatalogError;
 import 'widgets/content_cover.dart';
@@ -71,10 +72,11 @@ class _FavoriteRow extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      [item.kind.label, item.author, item.durationLabel]
-                          .whereType<String>()
-                          .where((value) => value.isNotEmpty)
-                          .join(' · '),
+                      joinMeta([
+                        item.kind.label,
+                        item.author,
+                        item.durationLabel,
+                      ]),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,

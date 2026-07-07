@@ -49,6 +49,13 @@ class CatalogScreen extends ConsumerWidget {
   }
 }
 
+// Geometría compartida entre las tarjetas reales y sus esqueletos de carga,
+// para que un ajuste de layout no requiera dos ediciones.
+const _umbralFeatureRatio = 1.06;
+const _materiaFeatureHeight = 330.0;
+const _mineralFeatureRatio = 1.42;
+const _rowMinHeight = 82.0;
+
 class ContentCollection extends ConsumerWidget {
   const ContentCollection({required this.items, super.key});
 
@@ -57,9 +64,21 @@ class ContentCollection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) {
-      return const SizedBox(
+      return SizedBox(
         height: 260,
-        child: Center(child: Text('Sin contenido')),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Sin contenido'),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => ref.read(contentRepositoryProvider).refresh(),
+                child: const Text('Actualizar'),
+              ),
+            ],
+          ),
+        ),
       );
     }
     final featured = items.first;
@@ -95,7 +114,7 @@ class _UmbralFeature extends StatelessWidget {
       child: InkWell(
         onTap: () => context.push('/content/${item.id}'),
         child: AspectRatio(
-          aspectRatio: 1.06,
+          aspectRatio: _umbralFeatureRatio,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -128,7 +147,7 @@ class _MateriaFeature extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 330,
+      height: _materiaFeatureHeight,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -224,7 +243,7 @@ class _MineralFeature extends StatelessWidget {
             Divider(color: Theme.of(context).dividerColor),
             const SizedBox(height: 14),
             AspectRatio(
-              aspectRatio: 1.42,
+              aspectRatio: _mineralFeatureRatio,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -276,7 +295,7 @@ class _CatalogRow extends StatelessWidget {
       child: InkWell(
         onTap: () => context.push('/content/${item.id}'),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 82),
+          constraints: const BoxConstraints(minHeight: _rowMinHeight),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             border: Border(
@@ -361,11 +380,11 @@ class _Metadata extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final values = [
+    final values = joinMeta([
       item.author,
       item.durationLabel,
       formatLongDate(item.publishedAt),
-    ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
+    ]);
     return Text(values, style: Theme.of(context).textTheme.bodySmall);
   }
 }
@@ -413,11 +432,11 @@ class CatalogLoading extends ConsumerWidget {
     final color = Theme.of(context).colorScheme.surface;
     final feature = switch (direction) {
       DesignDirection.umbral => AspectRatio(
-        aspectRatio: 1.06,
+        aspectRatio: _umbralFeatureRatio,
         child: ColoredBox(color: color),
       ),
       DesignDirection.materia => SizedBox(
-        height: 330,
+        height: _materiaFeatureHeight,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -440,7 +459,10 @@ class CatalogLoading extends ConsumerWidget {
         children: [
           Divider(color: Theme.of(context).dividerColor),
           const SizedBox(height: 14),
-          AspectRatio(aspectRatio: 1.42, child: ColoredBox(color: color)),
+          AspectRatio(
+            aspectRatio: _mineralFeatureRatio,
+            child: ColoredBox(color: color),
+          ),
           const SizedBox(height: 15),
           Divider(color: Theme.of(context).dividerColor, height: 1),
         ],
@@ -454,7 +476,10 @@ class CatalogLoading extends ConsumerWidget {
           2,
           (_) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: SizedBox(height: 72, child: ColoredBox(color: color)),
+            child: SizedBox(
+              height: _rowMinHeight,
+              child: ColoredBox(color: color),
+            ),
           ),
         ),
       ],

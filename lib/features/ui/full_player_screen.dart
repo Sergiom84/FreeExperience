@@ -10,6 +10,7 @@ import '../../core/providers.dart';
 import '../../core/util/formatters.dart';
 import '../player/free_experience_audio_handler.dart';
 import 'widgets/content_cover.dart';
+import 'widgets/seek_bar.dart';
 
 class FullPlayerScreen extends ConsumerWidget {
   const FullPlayerScreen({super.key});
@@ -57,7 +58,7 @@ class FullPlayerScreen extends ConsumerWidget {
               SafeArea(
                 child: Column(
                   children: [
-                    const _TopBar(),
+                    _TopBar(media: media),
                     Expanded(child: _TransportControls(handler: handler)),
                     _BottomPanel(media: media),
                   ],
@@ -72,7 +73,9 @@ class FullPlayerScreen extends ConsumerWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar();
+  const _TopBar({required this.media});
+
+  final MediaItem media;
 
   @override
   Widget build(BuildContext context) {
@@ -98,9 +101,17 @@ class _TopBar extends StatelessWidget {
     );
   }
 
+  /// Copia una referencia a lo que suena (antes copiaba solo el nombre de la
+  /// app, sin relación con el contenido).
   Future<void> _share(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    await Clipboard.setData(const ClipboardData(text: 'Free Experience'));
+    final artist = media.artist;
+    final reference = [
+      media.title,
+      if (artist != null && artist.isNotEmpty) artist,
+      'Free Experience',
+    ].join(' — ');
+    await Clipboard.setData(ClipboardData(text: reference));
     messenger.showSnackBar(const SnackBar(content: Text('Copiado')));
   }
 }
@@ -239,7 +250,7 @@ class _BottomPanel extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _ProgressBar(item: media),
+          SeekBar.overlay(duration: media.duration ?? Duration.zero),
           const SizedBox(height: 18),
           Text(
             media.title,
@@ -392,74 +403,5 @@ class _MoreButton extends ConsumerWidget {
         ? speed.toStringAsFixed(0)
         : speed.toStringAsFixed(2);
     return '${text}x';
-  }
-}
-
-class _ProgressBar extends ConsumerWidget {
-  const _ProgressBar({required this.item});
-
-  final MediaItem item;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final handler = ref.watch(audioHandlerProvider);
-    return StreamBuilder<Duration>(
-      stream: AudioService.position,
-      builder: (context, snapshot) {
-        final duration = item.duration ?? Duration.zero;
-        final position = snapshot.data ?? Duration.zero;
-        final max = duration.inMilliseconds
-            .toDouble()
-            .clamp(1, double.infinity)
-            .toDouble();
-        final value = position.inMilliseconds
-            .toDouble()
-            .clamp(0, max)
-            .toDouble();
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    formatPlaybackClock(position),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.white70),
-                  ),
-                  Text(
-                    formatPlaybackRemaining(position, duration),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 3,
-                activeTrackColor: Colors.white,
-                inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
-                thumbColor: Colors.white,
-                overlayColor: Colors.white.withValues(alpha: 0.2),
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              ),
-              child: Slider(
-                value: value,
-                max: max,
-                semanticFormatterCallback: (ms) =>
-                    formatPlaybackClock(Duration(milliseconds: ms.round())),
-                onChanged: (milliseconds) =>
-                    handler.seek(Duration(milliseconds: milliseconds.round())),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 }
