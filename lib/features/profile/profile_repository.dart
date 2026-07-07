@@ -1,7 +1,8 @@
 import 'dart:typed_data';
 
-import 'package:image/image.dart' as img;
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/util/image_prep.dart';
 
 /// Reads and writes the signed-in user's profile photo. The avatar lives in the
 /// public `avatars` bucket under `<uid>/avatar.jpg` and its path is mirrored in
@@ -40,20 +41,28 @@ class ProfileRepository {
   Future<String> uploadAvatar(Uint8List bytes) async {
     final user = _remote.auth.currentUser;
     if (user == null) throw StateError('Sin sesión');
-    final prepared = _prepare(bytes);
+    // El avatar se sube siempre como JPEG (ruta y contentType fijos); si el
+    // formato no se puede decodificar se rechaza en vez de subir bytes
+    // arbitrarios etiquetados como image/jpeg.
+    final prepared = prepareImage(bytes, maxDimension: 512);
+    if (prepared == null) throw StateError('Formato de imagen no soportado');
     final path = '${user.id}/avatar.jpg';
     await _remote.storage
         .from('avatars')
         .uploadBinary(
           path,
-          prepared,
+          prepared.bytes,
           fileOptions: const FileOptions(
             contentType: 'image/jpeg',
             upsert: true,
           ),
         );
     await _remote.from('profiles').upsert({'id': user.id, 'avatar_path': path});
-    return (await avatarUrl())!;
+    final url = await avatarUrl();
+    if (url == null) {
+      throw StateError('El avatar no está disponible tras subirlo');
+    }
+    return url;
   }
 
   /// Whether the signed-in user already listened to the welcome introduction.
@@ -75,20 +84,5 @@ class ProfileRepository {
     final user = _remote.auth.currentUser;
     if (user == null || user.isAnonymous) return;
     await _remote.from('profiles').upsert({'id': user.id, 'intro_seen': true});
-  }
-
-  Uint8List _prepare(Uint8List bytes) {
-    try {
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) return bytes;
-      final resized = decoded.width <= 512 && decoded.height <= 512
-          ? decoded
-          : (decoded.width >= decoded.height
-                ? img.copyResize(decoded, width: 512)
-                : img.copyResize(decoded, height: 512));
-      return img.encodeJpg(resized, quality: 82);
-    } on Object {
-      return bytes;
-    }
   }
 }

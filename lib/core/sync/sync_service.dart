@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
+import '../util/app_log.dart';
 import '../../features/identity/identity_service.dart';
 
 abstract interface class SyncService {
@@ -57,7 +58,9 @@ class SupabaseSyncService implements SyncService {
           await _database.markProgressSynced(operation.entityId);
         }
         await _database.removePendingSync(operation.id);
-      } on Object {
+      } on Object catch (error, stackTrace) {
+        // La cola se conserva y se reintenta en la próxima sincronización.
+        reportError(error, stackTrace, context: 'Sync.push');
         return;
       }
     }
@@ -90,7 +93,8 @@ class SupabaseSyncService implements SyncService {
           updatedAt: DateTime.parse(row['updated_at'] as String).toUtc(),
         );
       }
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'Sync.pull');
       return;
     }
   }

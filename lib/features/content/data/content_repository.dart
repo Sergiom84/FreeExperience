@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/sync/sync_service.dart';
+import '../../../core/util/app_log.dart';
 import '../domain/content_item.dart';
 import 'seed_catalog.dart';
 
@@ -23,11 +25,14 @@ class DriftContentRepository implements ContentRepository {
   DriftContentRepository({
     required AppDatabase database,
     SupabaseClient? remote,
+    SyncService? sync,
   }) : _database = database,
-       _remote = remote;
+       _remote = remote,
+       _sync = sync;
 
   final AppDatabase _database;
   final SupabaseClient? _remote;
+  final SyncService? _sync;
   RealtimeChannel? _channel;
 
   @override
@@ -79,7 +84,9 @@ class DriftContentRepository implements ContentRepository {
           .map((row) => _fromRemote(Map<String, dynamic>.from(row)))
           .toList();
       await _database.replacePublishedFromRemote(items.map(_toCompanion));
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      // Sin red se sigue sirviendo el catálogo local.
+      reportError(error, stackTrace, context: 'ContentRepository.refresh');
       return;
     }
   }
@@ -107,10 +114,14 @@ class DriftContentRepository implements ContentRepository {
   @override
   Stream<bool> watchIsFavorite(String id) => _database.watchIsFavorite(id);
 
+  /// Alterna el favorito y programa la sincronización remota. Antes cada
+  /// pantalla lanzaba su propio synchronize() y el reproductor no lo hacía.
   @override
   Future<void> toggleFavorite(String id) async {
     final favorite = await _database.isFavorite(id);
     await _database.setFavorite(id, favorite: !favorite);
+    final sync = _sync;
+    if (sync != null) unawaited(sync.synchronize());
   }
 
   CachedContentItemsCompanion _toCompanion(ContentItem item) =>

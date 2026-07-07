@@ -42,6 +42,16 @@ Future<({Uint8List bytes, String name})?> pickFile(String accept) {
     reader.readAsArrayBuffer(file);
   }.toJS;
 
+  // Sin esto, cancelar el diálogo dejaba el future colgado para siempre
+  // (ningún change se dispara al cancelar).
+  input.addEventListener(
+    'cancel',
+    (web.Event _) {
+      cleanup();
+      if (!completer.isCompleted) completer.complete(null);
+    }.toJS,
+  );
+
   input.click();
   return completer.future;
 }

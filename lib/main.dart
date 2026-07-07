@@ -12,6 +12,7 @@ import 'app.dart';
 import 'core/config/app_environment.dart';
 import 'core/database/app_database.dart';
 import 'core/providers.dart';
+import 'core/util/app_log.dart';
 import 'features/player/free_experience_audio_handler.dart';
 
 Future<void> main() async {
@@ -81,7 +82,9 @@ Future<void> _bootstrapAndRun() async {
     if (!skipAudioSession) {
       try {
         await audioHandler.initialize();
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        reportError(error, stackTrace, context: 'AudioHandler.initialize');
+      }
     }
   }
 

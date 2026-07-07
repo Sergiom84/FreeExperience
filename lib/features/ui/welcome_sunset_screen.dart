@@ -5,13 +5,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/providers.dart';
+import '../../core/util/app_log.dart';
+import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
-
-/// Clave de preferencia: el usuario ya escuchó la introducción de bienvenida.
-const introSeenPrefKey = 'intro_seen';
 
 /// Variante de bienvenida: atardecer de playa animado (cielo, sol, olas,
 /// estrellas, cometas) con el sol como botón de entrada y las cuatro
@@ -89,8 +87,9 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
       final program = await ui.FragmentProgram.fromAsset('shaders/ocean.frag');
       if (!mounted) return;
       setState(() => _ocean = program.fragmentShader());
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // Sin shader se conserva el fondo pintado (_SunsetPainter) como respaldo.
+      reportError(error, stackTrace, context: 'WelcomeSunset.loadShader');
     }
   }
 
@@ -149,14 +148,21 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     // Reproduce el último audio publicado en Extras > Introducción (si existe).
     // just_audio completa play() al terminar, y entonces se marca como vista y
     // se entra a Meditaciones.
+    //
+    // Las dependencias se capturan antes del primer await: la reproducción
+    // dura minutos y la pantalla puede desmontarse entre medias (usar ref
+    // después de dispose lanza una excepción).
+    final contentRepository = ref.read(contentRepositoryProvider);
+    final coordinator = ref.read(playbackCoordinatorProvider);
+    final introSeen = ref.read(introSeenStoreProvider);
+
     ContentItem? intro;
     try {
       // Asegura que el catálogo local tiene la intro recién publicada. Usa el
       // stream directamente (no el caché del provider) para evitar datos
       // obsoletos en caso de que el provider ya tuviera una emisión anterior.
-      await ref.read(contentRepositoryProvider).refresh();
-      final intros = await ref
-          .read(contentRepositoryProvider)
+      await contentRepository.refresh();
+      final intros = await contentRepository
           .watchPublished(kind: ContentKind.intro)
           .first;
       for (final item in intros) {
@@ -165,8 +171,9 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
           break;
         }
       }
-    } on Object {
+    } on Object catch (error, stackTrace) {
       // Sin red o sin intro publicada: se informa y no se marca como vista.
+      reportError(error, stackTrace, context: 'WelcomeSunset.loadIntro');
     }
 
     if (intro == null) {
@@ -191,8 +198,9 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
         ..duration = duration
         ..reset()
         ..forward();
-      await ref.read(playbackCoordinatorProvider).play(intro);
-    } on Object {
+      await coordinator.play(intro);
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'WelcomeSunset.playIntro');
       if (mounted) {
         _introProgress.stop();
         _introProgress.reset();
@@ -207,10 +215,9 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(introSeenPrefKey, true);
-      await ref.read(profileRepositoryProvider).setIntroSeen();
-    } on Object {
+      await introSeen.markSeen();
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'WelcomeSunset.markSeen');
       if (mounted) {
         _introProgress.stop();
         _introProgress.reset();
@@ -295,6 +302,12 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
                   final sunCenter = Offset(w * _sunFracX, h * sunY);
                   final breathT = Curves.easeInOut.transform(_breath.value);
                   final scale = reduceMotion ? 1.0 : 0.97 + breathT * 0.06;
+                  // Tiempo restante derivado del mismo controlador que dibuja
+                  // el anillo, para que texto y arco avancen siempre a la par.
+                  final introDuration =
+                      _introProgress.duration ?? Duration.zero;
+                  final introRemaining =
+                      introDuration * (1 - _introProgress.value);
                   return Stack(
                     fit: StackFit.expand,
                     children: [
@@ -310,6 +323,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
                             onPlay: _playIntro,
                             progress: _introProgress.value,
                             showingProgress: _introLoading,
+                            remaining: introRemaining,
                           ),
                         ),
                       ),
@@ -443,12 +457,14 @@ class _Sun extends StatelessWidget {
     required this.onPlay,
     required this.progress,
     required this.showingProgress,
+    required this.remaining,
   });
 
   final double size;
   final VoidCallback onPlay;
   final double progress;
   final bool showingProgress;
+  final Duration remaining;
 
   @override
   Widget build(BuildContext context) {
@@ -490,15 +506,37 @@ class _Sun extends StatelessWidget {
               ),
             ),
           ),
-        IconButton(
-          tooltip: 'Comenzar',
-          onPressed: onPlay,
-          icon: Icon(
-            Icons.play_arrow_rounded,
-            color: const Color(0xFF5A2400),
-            size: size * 0.4,
+        if (showingProgress)
+          Center(
+            child: Semantics(
+              label: 'Tiempo restante',
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: size * 0.18),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    formatPlaybackClock(remaining),
+                    style: TextStyle(
+                      color: const Color(0xFF5A2400),
+                      fontSize: size * 0.22,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [ui.FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          IconButton(
+            tooltip: 'Comenzar',
+            onPressed: onPlay,
+            icon: Icon(
+              Icons.play_arrow_rounded,
+              color: const Color(0xFF5A2400),
+              size: size * 0.4,
+            ),
           ),
-        ),
       ],
     );
   }

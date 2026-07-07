@@ -13,6 +13,7 @@ import '../features/downloads/download_manager.dart';
 import '../features/identity/identity_service.dart';
 import '../features/player/free_experience_audio_handler.dart';
 import '../features/player/playback_coordinator.dart';
+import '../features/profile/intro_seen_store.dart';
 import '../features/profile/profile_repository.dart';
 
 final databaseProvider = Provider<AppDatabase>(
@@ -43,6 +44,7 @@ final contentRepositoryProvider = Provider<ContentRepository>((ref) {
   final repository = DriftContentRepository(
     database: ref.watch(databaseProvider),
     remote: ref.watch(supabaseClientProvider),
+    sync: ref.watch(syncServiceProvider),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -145,6 +147,10 @@ final identityProvider = StreamProvider<IdentitySnapshot>((ref) async* {
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ProfileRepository(ref.watch(supabaseClientProvider)),
+);
+
+final introSeenStoreProvider = Provider<IntroSeenStore>(
+  (ref) => IntroSeenStore(ref.watch(profileRepositoryProvider)),
 );
 
 /// Public URL of the signed-in user's avatar. Recomputed when the identity

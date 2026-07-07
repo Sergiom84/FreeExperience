@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/util/app_log.dart';
+import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
 import 'admin_preview_url.dart';
@@ -40,6 +42,10 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
   bool _existingHasMedia = false;
   String? _existingMediaSignedUrl;
 
+  /// Borrador creado por un intento anterior de guardar: se reutiliza en el
+  /// reintento para no acumular borradores huérfanos si una subida falló.
+  String? _createdId;
+
   int _detectedDuration = 0;
 
   int _index = 0;
@@ -69,16 +75,16 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
     try {
       final repo = ref.read(adminContentRepositoryProvider);
       final detail = await repo.getDetail(widget.editId!);
+      if (!mounted) return;
       _title.text = detail.title;
       _author.text = detail.author ?? '';
       _body.text = detail.body ?? '';
       _url.text = detail.externalUrl ?? '';
       _existingHasMedia = detail.hasMedia;
       _existingMediaSignedUrl = detail.mediaSignedUrl;
-      _existingCoverUrl = detail.coverPath == null
-          ? null
-          : repo.coverPublicUrl(detail.coverPath!);
-    } on Object {
+      _existingCoverUrl = repo.resolveCoverUrl(detail.coverPath);
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminWizard.load');
       if (mounted) setState(() => _error = 'No se pudo cargar');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -153,33 +159,32 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
       _error = null;
     });
     try {
-      await ref
-          .read(adminContentRepositoryProvider)
-          .submit(
-            ContentDraftInput(
-              kind: widget.kind,
-              title: _title.text,
-              author: _author.text,
-              body: _body.text,
-              externalUrl: _url.text,
-              coverBytes: _coverBytes,
-              coverFilename: _coverName,
-              mediaBytes: _mediaBytes,
-              mediaFilename: _mediaName,
-              mediaDurationSeconds: _detectedDuration > 0
-                  ? _detectedDuration
-                  : null,
-            ),
-            publish: publish,
-            existingId: widget.editId,
-          );
+      final repo = ref.read(adminContentRepositoryProvider);
+      final input = ContentDraftInput(
+        kind: widget.kind,
+        title: _title.text,
+        author: _author.text,
+        body: _body.text,
+        externalUrl: _url.text,
+        coverBytes: _coverBytes,
+        coverFilename: _coverName,
+        mediaBytes: _mediaBytes,
+        mediaFilename: _mediaName,
+        mediaDurationSeconds: _detectedDuration > 0 ? _detectedDuration : null,
+      );
+      // El borrador se crea (o reutiliza) antes de las subidas: si una subida
+      // falla, el reintento continúa sobre el mismo id.
+      var id = widget.editId ?? _createdId;
+      id ??= _createdId = await repo.createDraft(input);
+      await repo.submit(input, publish: publish, existingId: id);
       ref.invalidate(adminItemsProvider(widget.kind));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(publish ? 'Publicado' : 'Borrador guardado')),
       );
       context.pop();
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminWizard.submit');
       if (mounted) setState(() => _error = 'No se pudo guardar');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -610,6 +615,11 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
   bool _ready = false;
   Object? _error;
 
+  // Cada _init incrementa la generación; un initialize() que termina cuando ya
+  // hay otra fuente en curso descarta su controlador en vez de instalarlo
+  // (antes el archivo anterior podía "ganar" al nuevo y fugar el controlador).
+  int _generation = 0;
+
   @override
   void initState() {
     super.initState();
@@ -627,7 +637,10 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
     }
   }
 
+  bool _isStale(int generation) => generation != _generation || !mounted;
+
   Future<void> _init() async {
+    final generation = ++_generation;
     setState(() {
       _ready = false;
       _error = null;
@@ -636,6 +649,10 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
       final String url;
       if (widget._bytes != null) {
         url = await createPreviewUrl(widget._bytes!, widget._mimeType!);
+        if (_isStale(generation)) {
+          revokePreviewUrl(url);
+          return;
+        }
         _blobUrl = url;
       } else {
         url = widget._existingUrl!;
@@ -644,13 +661,13 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
       if (widget.isVideo) {
         final controller = VideoPlayerController.networkUrl(Uri.parse(url));
         await controller.initialize();
-        final duration = controller.value.duration.inSeconds;
-        if (duration > 0) widget.onDurationDetected?.call(duration);
-        controller.addListener(_rebuild);
-        if (!mounted) {
+        if (_isStale(generation)) {
           await controller.dispose();
           return;
         }
+        final duration = controller.value.duration.inSeconds;
+        if (duration > 0) widget.onDurationDetected?.call(duration);
+        controller.addListener(_rebuild);
         setState(() {
           _videoController = controller;
           _ready = true;
@@ -658,26 +675,28 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
       } else {
         final player = AudioPlayer();
         await player.setUrl(url);
+        if (_isStale(generation)) {
+          await player.dispose();
+          return;
+        }
         final duration = player.duration?.inSeconds ?? 0;
         if (duration > 0) widget.onDurationDetected?.call(duration);
         player.playerStateStream.listen((_) {
           if (mounted) setState(() {});
         });
-        if (!mounted) {
-          await player.dispose();
-          return;
-        }
         setState(() {
           _audioPlayer = player;
           _ready = true;
         });
       }
-    } on Object catch (e) {
-      if (mounted) setState(() => _error = e);
+    } on Object catch (e, stackTrace) {
+      reportError(e, stackTrace, context: 'AdminMediaPlayer.init');
+      if (!_isStale(generation)) setState(() => _error = e);
     }
   }
 
   void _cleanup() {
+    _generation++;
     final url = _blobUrl;
     if (url != null) {
       revokePreviewUrl(url);
@@ -765,12 +784,12 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
               onPressed: c.value.isPlaying ? c.pause : c.play,
             ),
             Text(
-              _formatDuration(c.value.position),
+              formatPlaybackClock(c.value.position),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const Text(' / '),
             Text(
-              _formatDuration(c.value.duration),
+              formatPlaybackClock(c.value.duration),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -826,11 +845,11 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                _formatDuration(position),
+                                formatPlaybackClock(position),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               Text(
-                                _formatDuration(duration),
+                                formatPlaybackClock(duration),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -890,12 +909,6 @@ class _AdminMediaPlayerState extends State<_AdminMediaPlayer> {
         );
       },
     );
-  }
-
-  String _formatDuration(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
   }
 }
 

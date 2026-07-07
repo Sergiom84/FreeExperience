@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../content/domain/content_item.dart';
+import 'catalog_screen.dart' show CatalogError;
 import 'widgets/content_cover.dart';
 
 class FavoritesScreen extends ConsumerWidget {
@@ -17,8 +18,11 @@ class FavoritesScreen extends ConsumerWidget {
       body: favorites.when(
         loading: () =>
             const Center(child: CircularProgressIndicator.adaptive()),
-        error: (error, stackTrace) =>
-            const Center(child: Text('No disponible')),
+        error: (error, stackTrace) => Center(
+          child: CatalogError(
+            onRetry: () => ref.invalidate(favoriteContentProvider),
+          ),
+        ),
         data: (items) => items.isEmpty
             ? const Center(child: Text('Sin guardados'))
             : ListView.separated(
@@ -80,12 +84,8 @@ class _FavoriteRow extends ConsumerWidget {
               ),
               IconButton(
                 tooltip: 'Quitar de guardados',
-                onPressed: () async {
-                  await ref
-                      .read(contentRepositoryProvider)
-                      .toggleFavorite(item.id);
-                  await ref.read(syncServiceProvider).synchronize();
-                },
+                onPressed: () =>
+                    ref.read(contentRepositoryProvider).toggleFavorite(item.id),
                 icon: const Icon(Icons.bookmark),
               ),
             ],

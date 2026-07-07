@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/providers.dart';
-import '../ui/welcome_sunset_screen.dart' show introSeenPrefKey;
 import 'identity_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -24,21 +22,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _loading = false;
   bool _isSignUp = false;
   bool _pendingConfirmation = false;
+  bool _navigated = false;
   String? _error;
+  ProviderSubscription<AsyncValue<IdentitySnapshot>>? _identitySubscription;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final identity = ref.read(identityProvider).asData?.value;
-      if (identity?.status == IdentityStatus.linked) {
+    // Reactivo, no de un solo disparo: la restauración de sesión puede
+    // resolverse frames después de montar el login.
+    _identitySubscription = ref.listenManual(identityProvider, (
+      previous,
+      next,
+    ) {
+      if (next.asData?.value.status == IdentityStatus.linked) {
         _goAfterAuth();
       }
-    });
+    }, fireImmediately: true);
   }
 
   @override
   void dispose() {
+    _identitySubscription?.close();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
@@ -46,19 +51,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// Primera vez (intro no escuchada) → bienvenida; si ya escuchada → meditar.
-  /// El estado vive en el perfil (cross-device); cae al flag local si no hay red.
   Future<void> _goAfterAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    var seen = prefs.getBool(introSeenPrefKey) ?? false;
-    try {
-      final remote = await ref.read(profileRepositoryProvider).introSeen();
-      if (remote != null) {
-        seen = remote;
-        await prefs.setBool(introSeenPrefKey, remote);
-      }
-    } on Object {
-      // Sin red: nos quedamos con el flag local.
-    }
+    if (_navigated) return;
+    _navigated = true;
+    final seen = await ref.read(introSeenStoreProvider).isSeen();
     if (!mounted) return;
     context.go(seen ? '/meditar' : '/bienvenida');
   }
@@ -90,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await svc.signInWithPassword(email, password);
       if (mounted) await _goAfterAuth();
     } catch (e) {
-      setState(() => _error = _friendlyError(e));
+      if (mounted) setState(() => _error = _friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -107,15 +103,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   String _friendlyError(Object e) {
-    final msg = e.toString().toLowerCase();
-    if (msg.contains('invalid login')) return 'Email o contraseña incorrectos.';
-    if (msg.contains('email already')) {
-      return 'Ya existe una cuenta con ese email.';
+    if (e is IdentityException) {
+      return switch (e.code) {
+        IdentityErrorCode.invalidCredentials =>
+          'Email o contraseña incorrectos.',
+        IdentityErrorCode.emailInUse => 'Ya existe una cuenta con ese email.',
+        IdentityErrorCode.weakPassword =>
+          'Contraseña muy corta (mín. 6 caracteres).',
+        IdentityErrorCode.network => 'Sin conexión. Verifica tu red.',
+        IdentityErrorCode.unknown => 'Algo salió mal. Inténtalo de nuevo.',
+      };
     }
-    if (msg.contains('weak password')) {
-      return 'Contraseña muy corta (mín. 6 caracteres).';
-    }
-    if (msg.contains('network')) return 'Sin conexión. Verifica tu red.';
     return 'Algo salió mal. Inténtalo de nuevo.';
   }
 
