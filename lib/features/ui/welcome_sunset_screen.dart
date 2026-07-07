@@ -93,13 +93,29 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     }
   }
 
-  void _startMotion(bool reduceMotion) {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Aquí y no en build: reacciona a los cambios de reducir movimiento y,
+    // al activarse, detiene animaciones y cometas de verdad (antes seguían
+    // corriendo porque solo se fijaban los valores).
+    _syncMotion(MediaQuery.disableAnimationsOf(context));
+  }
+
+  void _syncMotion(bool reduceMotion) {
     if (reduceMotion) {
+      _waves.stop();
+      _breath.stop();
+      _clouds.stop();
+      _sunCycle.stop();
+      _oceanTime.stop();
       _waves.value = 0;
       _breath.value = 0.5;
       _clouds.value = 0;
       _sunCycle.value = 0;
       _oceanTime.value = 6;
+      _cometTimer?.cancel();
+      _cometTimer = null;
       return;
     }
     if (!_waves.isAnimating) _waves.repeat();
@@ -249,7 +265,6 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    _startMotion(reduceMotion);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A1E),

@@ -2,42 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'design_direction.dart';
+import 'design_tokens.dart';
 
 abstract final class AppTheme {
   static ThemeData forDirection(DesignDirection direction) =>
       switch (direction) {
         DesignDirection.umbral => _build(
+          direction: direction,
           brightness: Brightness.dark,
           background: const Color(0xFF080B0F),
           surface: const Color(0xFF141A21),
           foreground: const Color(0xFFF4EFE6),
           muted: const Color(0xFFAAA397),
           accent: const Color(0xFFC6A15B),
-          focusRing: const Color(0x2EC6A15B),
           display: GoogleFonts.cormorantGaramondTextTheme,
           body: GoogleFonts.manropeTextTheme,
           radius: 8,
         ),
         DesignDirection.materia => _build(
+          direction: direction,
           brightness: Brightness.dark,
           background: const Color(0xFF17130F),
           surface: const Color(0xFF241D17),
           foreground: const Color(0xFFF2E8DA),
           muted: const Color(0xFFB7A58F),
           accent: const Color(0xFFBE7C56),
-          focusRing: const Color(0x2EBE7C56),
           display: GoogleFonts.frauncesTextTheme,
           body: GoogleFonts.sourceSans3TextTheme,
           radius: 18,
         ),
         DesignDirection.mineral => _build(
+          direction: direction,
           brightness: Brightness.light,
           background: const Color(0xFFE9E5DC),
           surface: const Color(0xFFF3F0E9),
           foreground: const Color(0xFF181A1B),
           muted: const Color(0xFF6E6A63),
           accent: const Color(0xFF8A6A3E),
-          focusRing: const Color(0x288A6A3E),
           display: GoogleFonts.instrumentSerifTextTheme,
           body: GoogleFonts.dmSansTextTheme,
           radius: 2,
@@ -45,17 +46,20 @@ abstract final class AppTheme {
       };
 
   static ThemeData _build({
+    required DesignDirection direction,
     required Brightness brightness,
     required Color background,
     required Color surface,
     required Color foreground,
     required Color muted,
     required Color accent,
-    required Color focusRing,
     required TextTheme Function([TextTheme?]) display,
     required TextTheme Function([TextTheme?]) body,
     required double radius,
   }) {
+    // Única fuente del anillo de foco: AppTokens (antes los mismos hex
+    // estaban duplicados aquí y en design_tokens.dart).
+    final focusRing = AppTokens.focusRingColor(direction);
     final base = brightness == Brightness.dark
         ? ThemeData.dark(useMaterial3: true)
         : ThemeData.light(useMaterial3: true);

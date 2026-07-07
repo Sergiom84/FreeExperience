@@ -73,3 +73,8 @@ String formatPlaybackRemaining(Duration position, Duration duration) {
   if (duration <= Duration.zero) return '--:--';
   return '-${formatPlaybackClock(duration - position)}';
 }
+
+/// "Autor · 12 min · 12 jun 2026" — línea de metadatos: une las partes con
+/// " · " descartando nulos y vacíos (antes cada pantalla repetía este join).
+String joinMeta(Iterable<String?> parts) =>
+    parts.whereType<String>().where((value) => value.isNotEmpty).join(' · ');

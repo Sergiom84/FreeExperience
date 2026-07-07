@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../core/providers.dart';
 import '../../core/util/app_log.dart';
+import '../../core/util/formatters.dart';
 import '../content/domain/content_item.dart';
 import '../downloads/download_manager.dart';
 import 'catalog_screen.dart' show CatalogError;
@@ -64,10 +65,7 @@ class ContentDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    [content.author, content.durationLabel]
-                        .whereType<String>()
-                        .where((value) => value.isNotEmpty)
-                        .join(' · '),
+                    joinMeta([content.author, content.durationLabel]),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 24),

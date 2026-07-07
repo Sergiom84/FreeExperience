@@ -107,7 +107,7 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 - [x] **Resolución de URL de portada duplicada e inconsistente**
   (wizard `_load` vs `listByKind`): centralizar en un método del repositorio;
   hoy editar un ítem con `cover_path` absoluto o de asset rompe la portada.
-- [ ] **Duración de vídeo = 0** (`admin_content_repository.dart:285`): un vídeo
+- [x] **Duración de vídeo = 0** (`admin_content_repository.dart:285`): un vídeo
   publicado antes de que el preview termine de inicializar queda con duración 0.
 - [x] **Mime map sin `wav`/`aiff`** aunque el picker los permite: se suben como
   `audio/mpeg`.
@@ -152,18 +152,18 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
   (`profile_screen.dart:420-446`): `_linkEmail` hace `controller.dispose()` al
   volver `showDialog` mientras la transición de salida aún puede construir el
   `TextField`. Mover el controller a un widget con estado propio.
-- [ ] **Compartir es un placeholder** (`full_player_screen.dart:100-104`): copia
+- [x] **Compartir es un placeholder** (`full_player_screen.dart:100-104`): copia
   el literal "Free Experience" al portapapeles. Cablear datos reales o retirar
   el botón antes de la beta.
 
 ### P2 — Refactorización estructural
 
-- [ ] **Trocear `admin_wizard_screen.dart`**: extraer `_AdminMediaPlayer`
+- [~] **Trocear `admin_wizard_screen.dart`**: extraer `_AdminMediaPlayer`
   (~320 líneas reutilizables) a su propio fichero y los pasos del wizard a
   `steps/`.
-- [ ] **Trocear `admin_gate_screen.dart`**: login, dashboard y listado de sección
+- [x] **Trocear `admin_gate_screen.dart`**: login, dashboard y listado de sección
   en ficheros separados.
-- [ ] **Unificar la barra de progreso del reproductor**: `_ProgressBar`
+- [x] **Unificar la barra de progreso del reproductor**: `_ProgressBar`
   (`full_player_screen.dart:403-469`) y `_MiniSeekBar`
   (`mini_player.dart:109-183`) son casi idénticos (~120 líneas duplicadas).
   Extraer un `SeekBar(duration, {compact})`.
@@ -172,11 +172,11 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
   respiración del sol. Extraer a `widgets/` compartidos. Confirmar además si
   `/bienvenida-orbita` (solo alcanzable escribiendo la URL) sigue en evaluación
   o se puede retirar.
-- [ ] **`_InspirationCollection` duplica el cuerpo de `CatalogScreen`**
+- [x] **`_InspirationCollection` duplica el cuerpo de `CatalogScreen`**
   (`inspiration_screen.dart:55-80`): extraer un `ContentKindList(kind)` común.
   La línea de metadatos con " · " está escrita tres veces
   (catalog:364, detail:62, favorites:70): extraer `MetadataLine(item)`.
-- [ ] **El esqueleto de catálogo re-codifica la geometría a mano**
+- [x] **El esqueleto de catálogo re-codifica la geometría a mano**
   (`catalog_screen.dart:407-463`): duplica aspect ratios y alturas de los
   widgets reales y no coincide con las filas (72 vs 82 px). Compartir constantes
   o exponer `skeleton()` por variante.
@@ -185,22 +185,22 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
   facto), `welcome_sunset_screen` ~40 colores fijos, y el dashboard admin tiene
   hex propios (`admin_gate_screen.dart:270-290`). Migrar a tokens o registrarlos
   como excepciones aprobadas en DESIGN.md.
-- [ ] **Paleta y tokens duplicados en `core/design/`**: los colores de focus y
+- [~] **Paleta y tokens duplicados en `core/design/`**: los colores de focus y
   superficie están definidos dos veces (`app_theme.dart` y `design_tokens.dart`);
   no existen tokens de espaciado ni de duración pese a que DESIGN.md los define,
   y por eso las pantallas inventan valores (10/14/18/22/25). Crear un
   `DirectionPalette` único y `AppTokens.space*`/`motion*`.
-- [ ] **Efectos secundarios en `build`**: `_startMotion(reduceMotion)` se llama
+- [x] **Efectos secundarios en `build`**: `_startMotion(reduceMotion)` se llama
   desde `build` en ambas bienvenidas; un cambio de reduce-motion en caliente no
   detiene los timers de cometas/frases. Mover a `initState`/`didChangeDependencies`.
   Los cometas además reconstruyen la pantalla entera cada 2-6 s
   (`welcome_sunset_screen.dart:117-144`): aislarlos en una capa propia.
-- [ ] **`app_shell.dart:20-27`**: el override local de `NavigationBarTheme`
+- [x] **`app_shell.dart:20-27`**: el override local de `NavigationBarTheme`
   pisa el `labelTextStyle` global y pierde el estilo del estado seleccionado.
 - [ ] **`ColorScheme` incompleto** (`app_theme.dart:104-114`): solo 8 roles;
   `outline`, `surfaceContainer`, etc. caen en defaults de Material que no casan
   con las paletas.
-- [ ] **Tests**: añadir cobertura para `SupabaseSyncService` (push/pull/merge),
+- [~] **Tests**: añadir cobertura para `SupabaseSyncService` (push/pull/merge),
   `LocalDownloadManager` (resolve/fallos), `PlaybackCoordinator` (cola/progreso)
   y `AdminContentRepository.submit` con mocks.
 
@@ -216,10 +216,10 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 - [ ] El snackbar "No hay una introducción publicada en Extras."
   (`welcome_sunset_screen.dart:179`) filtra vocabulario de administración al
   usuario final.
-- [ ] Diálogo de "Eliminar cuenta" sin cuerpo (`profile_screen.dart:395-410`):
+- [x] Diálogo de "Eliminar cuenta" sin cuerpo (`profile_screen.dart:395-410`):
   una acción irreversible merece una línea de consecuencias (es información de
   estado, no texto tutorial).
-- [ ] Estados de carga enmascarados como datos (`profile_screen.dart:16-18`):
+- [x] Estados de carga enmascarados como datos (`profile_screen.dart:16-18`):
   mientras la identidad carga se muestra "Modo local". Usar `.when`/esqueletos.
 
 ---
@@ -284,12 +284,41 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
   - Test nuevo `test/formatters_test.dart` para el reloj de reproducción.
   - Verificado en local con Flutter 3.41.6: `dart format`, `flutter analyze`
     (sin avisos) y `flutter test` (todo en verde).
+- 2026-07-07 — Tercera ronda ("corrige todo lo que puedas"). Notas:
+  - Duración de vídeo: `_detectDuration` ya no devuelve 0 para vídeo; el
+    reproductor nativo lee la duración del contenedor mp4/mov como respaldo
+    cuando el preview no la detectó a tiempo.
+  - `SeekBar` compartida (`ui/widgets/seek_bar.dart`) con variantes `.mini`
+    y `.overlay`; sustituye a `_MiniSeekBar` y `_ProgressBar` (~120 líneas
+    duplicadas y el mismo layout/colores de antes).
+  - `joinMeta` en formatters sustituye los cuatro joins " · " duplicados
+    (catálogo, detalle, guardados, panel admin).
+  - Troceo: `AdminMediaPlayer` a `admin_media_player.dart` (~330 líneas
+    fuera del wizard); `AdminLoginScreen` y `AdminDashboard` a sus propios
+    ficheros (movimientos puros). Los pasos del wizard siguen inline.
+  - Compartir en el reproductor copia "Título — Autor — Free Experience"
+    en vez del literal fijo; sigue sin hoja de compartir nativa (no hay
+    dependencia share_plus; decidir si se quiere).
+  - `app_shell` ya no pisa el `labelTextStyle` global: las etiquetas de la
+    barra inferior recuperan color/peso de estado seleccionado.
+  - Animaciones de las dos bienvenidas: arrancan en `didChangeDependencies`
+    y se detienen de verdad al activar reducir movimiento (antes seguían
+    corriendo); la cadencia de frases se reajusta en caliente.
+  - Geometría de tarjetas y esqueletos del catálogo compartida en
+    constantes; las filas del esqueleto pasan a 82 px como las reales.
+    Estado vacío del catálogo con acción "Actualizar".
+  - Anillo de foco deduplicado: `AppTheme` consume `AppTokens.focusRingColor`.
+  - Perfil: indicador de carga mientras se restaura la identidad (antes
+    mostraba "Modo local"), y el diálogo de eliminar cuenta declara las
+    consecuencias.
+  - Tests nuevos: `content_repository_test.dart` (semilla y favorito+sync)
+    e `intro_seen_store_test.dart` (flag local/remoto). 22 tests en verde.
 - 2026-07-07 — Pendientes que requieren decisión de equipo o pruebas en
-  dispositivo (no bloquean el merge): duración de vídeo = 0 si se publica
-  antes de que el preview la detecte, subida por streaming para vídeos
-  grandes (`withData: true`), botón compartir del reproductor (placeholder),
-  troceo de pantallas grandes, tokens de espaciado/paleta única, textos P3 y
-  tests de servicios.
+  dispositivo: subida por streaming para vídeos grandes (`withData: true`),
+  hoja de compartir nativa, destino de `/bienvenida-orbita` y widgets
+  compartidos entre bienvenidas, tokens de espaciado/movimiento y
+  `ColorScheme` completo (DESIGN.md), textos P3 (copys), aislar los cometas
+  en su propia capa, y tests de sync/descargas/coordinator.
 
 ## 4. Progreso
 
@@ -300,3 +329,4 @@ textos (`test/text_policy_test.dart`) automatiza las reglas de producto.
 | 2026-07-07 | Correcciones P1 (16 puntos) + test de formatters | Hecho |
 | 2026-07-07 | CI: el push trigger apuntaba a `main` pero la rama es `master` | Hecho |
 | 2026-07-07 | Merge a `master` (la rama principal del repo) | Hecho |
+| 2026-07-07 | Tercera ronda: P2/P3 abordables + duración de vídeo + 6 tests nuevos | Hecho |
