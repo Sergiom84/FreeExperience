@@ -315,11 +315,17 @@ class AdminContentRepository {
     }
   }
 
-  /// Prepara la portada con el helper compartido (lado mayor <= 1600, JPEG).
-  /// Para formatos que el decodificador no lee (p. ej. HEIC) se conservan los
-  /// bytes originales con su mime real.
+  /// Prepara la portada con el helper compartido (lado mayor <= 1600, JPEG) y
+  /// la recorta centrada al encuadre 4:5 que usan miniatura y vista grande, de
+  /// modo que la imagen subida se muestre igual en ambas. Para formatos que el
+  /// decodificador no lee (p. ej. HEIC) se conservan los bytes originales con
+  /// su mime real.
   _PreparedCover _prepareCover(Uint8List bytes, String? filename) {
-    final prepared = prepareImage(bytes, maxDimension: 1600);
+    final prepared = prepareImage(
+      bytes,
+      maxDimension: 1600,
+      targetAspect: 4 / 5,
+    );
     if (prepared != null) {
       return _PreparedCover(
         bytes: prepared.bytes,
