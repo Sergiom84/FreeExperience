@@ -83,7 +83,10 @@ Las tres direcciones permanecen implementadas durante la beta interna para revis
 
 ## Navegación
 
-- Barra inferior: Meditar, Prácticas, Canalizaciones e Inspiración.
+- Barra inferior: cuatro secciones. Etiquetas cortas de una sola línea a 10 px
+  ("Meditar", "Prácticas", "Canales", "Inspirar"): los nombres completos de las
+  secciones (Canalizaciones, Inspiración) no caben en una línea a 4 pestañas y
+  aparecen íntegros en cada cabecera.
 - Inspiración: control segmentado Vídeos/Recomendaciones.
 - Perfil y Guardados: acciones persistentes del encabezado.
 - Minirreproductor: sobre la barra inferior cuando existe un contenido cargado.

@@ -151,6 +151,11 @@ abstract final class AppTheme {
           return textTheme.labelSmall?.copyWith(
             color: selected ? accent : muted,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            // Escala de nav: 10 px sin tracking. Con las tipografías del sistema
+            // (anchas) es el mayor tamaño que mantiene las cuatro etiquetas en
+            // una sola línea hasta en pantallas de 375 pt.
+            fontSize: 10,
+            letterSpacing: 0,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
