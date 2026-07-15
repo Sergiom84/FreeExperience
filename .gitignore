@@ -49,3 +49,8 @@ app.*.map.json
 .env
 .env.*
 !.env.example
+
+# Android signing (do NOT commit)
+android/key.properties
+**/*.jks
+**/*.keystore
