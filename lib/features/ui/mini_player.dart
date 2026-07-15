@@ -115,10 +115,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Retroceder 15 segundos',
-                          onPressed: () => handler.seek(
-                            handler.position - const Duration(seconds: 15),
-                          ),
+                          tooltip: 'Retroceder 10 segundos',
+                          onPressed: handler.rewind,
                           icon: const Icon(Icons.replay_10),
                         ),
                         IconButton(
@@ -127,10 +125,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                           icon: Icon(playing ? Icons.pause : Icons.play_arrow),
                         ),
                         IconButton(
-                          tooltip: 'Avanzar 15 segundos',
-                          onPressed: () => handler.seek(
-                            handler.position + const Duration(seconds: 15),
-                          ),
+                          tooltip: 'Avanzar 10 segundos',
+                          onPressed: handler.fastForward,
                           icon: const Icon(Icons.forward_10),
                         ),
                         IconButton(

@@ -131,6 +131,15 @@ final favoriteContentProvider = StreamProvider<List<ContentItem>>(
   (ref) => ref.watch(contentRepositoryProvider).watchFavorites(),
 );
 
+/// Si el usuario ya escuchó el contenido hasta el final. Alimenta la marca de
+/// confirmación en los listados de cada sección.
+final isListenedProvider = StreamProvider.family<bool, String>(
+  (ref, id) => ref
+      .watch(progressRepositoryProvider)
+      .watch(id)
+      .map((record) => record?.completed ?? false),
+);
+
 final isFavoriteProvider = StreamProvider.family<bool, String>(
   (ref, id) => ref.watch(contentRepositoryProvider).watchIsFavorite(id),
 );

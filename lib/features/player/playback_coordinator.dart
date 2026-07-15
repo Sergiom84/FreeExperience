@@ -143,7 +143,6 @@ class PlaybackCoordinator {
   Future<void> _attemptLoadAndPlay(ContentItem item) async {
     final uri = await _downloads.resolve(item);
     if (uri == null) throw StateError('Contenido no disponible');
-    final progress = await _progress.get(item.id);
     final artUri = item.coverPath.startsWith('http')
         ? Uri.tryParse(item.coverPath)
         : null;
@@ -158,11 +157,8 @@ class PlaybackCoordinator {
       ),
       uri,
     );
-    if (progress != null &&
-        progress.positionSeconds > 0 &&
-        !progress.completed) {
-      await _handler.seek(Duration(seconds: progress.positionSeconds));
-    }
+    // Los audios son cortos: siempre se empieza desde el principio. El
+    // progreso guardado se conserva solo para marcar lo ya escuchado.
     await _handler.play();
     _startProgressTimer();
   }

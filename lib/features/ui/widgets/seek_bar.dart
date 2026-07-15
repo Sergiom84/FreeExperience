@@ -11,7 +11,7 @@ import '../../../core/util/formatters.dart';
 ///
 /// - [SeekBar.mini]: colores del tema, etiquetas bajo el slider.
 /// - [SeekBar.overlay]: blanco sobre la portada, etiquetas sobre el slider.
-class SeekBar extends ConsumerWidget {
+class SeekBar extends ConsumerStatefulWidget {
   const SeekBar.mini({required this.duration, super.key}) : _overlay = false;
 
   const SeekBar.overlay({required this.duration, super.key}) : _overlay = true;
@@ -20,37 +20,63 @@ class SeekBar extends ConsumerWidget {
   final bool _overlay;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SeekBar> createState() => _SeekBarState();
+}
+
+class _SeekBarState extends ConsumerState<SeekBar> {
+  /// Posición mientras se arrastra. El seek real se lanza solo al soltar:
+  /// pedir un seek por cada tick del arrastre satura al reproductor con una
+  /// fuente de red y el movimiento se atasca.
+  double? _dragValue;
+  bool _dragging = false;
+  DateTime? _dragEndedAt;
+
+  @override
+  Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
     final scheme = Theme.of(context).colorScheme;
     return StreamBuilder<Duration>(
       stream: AudioService.position,
       builder: (context, snapshot) {
         final position = snapshot.data ?? Duration.zero;
-        final max = duration.inMilliseconds
+        // Tras soltar, se mantiene el valor arrastrado hasta que el stream de
+        // posición alcanza el seek; si no, el pulgar saltaba hacia atrás un
+        // instante mientras el reproductor completaba el salto.
+        if (!_dragging && _dragValue != null) {
+          final delta = position.inMilliseconds - _dragValue!;
+          final expired =
+              _dragEndedAt != null &&
+              DateTime.now().difference(_dragEndedAt!) >
+                  const Duration(milliseconds: 1500);
+          if (delta.abs() < 1000 || expired) {
+            _dragValue = null;
+            _dragEndedAt = null;
+          }
+        }
+        final max = widget.duration.inMilliseconds
             .toDouble()
             .clamp(1, double.infinity)
             .toDouble();
-        final value = position.inMilliseconds
-            .toDouble()
+        final value = (_dragValue ?? position.inMilliseconds.toDouble())
             .clamp(0, max)
             .toDouble();
+        final shownPosition = Duration(milliseconds: value.round());
 
-        final labelStyle = _overlay
+        final labelStyle = widget._overlay
             ? Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.white70)
             : Theme.of(context).textTheme.labelSmall;
         final labels = Padding(
-          padding: _overlay
+          padding: widget._overlay
               ? const EdgeInsets.symmetric(horizontal: 4)
               : const EdgeInsets.fromLTRB(20, 0, 20, 2),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(formatPlaybackClock(position), style: labelStyle),
+              Text(formatPlaybackClock(shownPosition), style: labelStyle),
               Text(
-                formatPlaybackRemaining(position, duration),
+                formatPlaybackRemaining(shownPosition, widget.duration),
                 style: labelStyle,
               ),
             ],
@@ -59,15 +85,17 @@ class SeekBar extends ConsumerWidget {
         final slider = SliderTheme(
           data: SliderTheme.of(context).copyWith(
             trackHeight: 3,
-            activeTrackColor: _overlay ? Colors.white : scheme.primary,
-            inactiveTrackColor: _overlay
+            activeTrackColor: widget._overlay ? Colors.white : scheme.primary,
+            inactiveTrackColor: widget._overlay
                 ? Colors.white.withValues(alpha: 0.3)
                 : scheme.onSurface.withValues(alpha: 0.22),
-            thumbColor: _overlay ? Colors.white : scheme.primary,
-            overlayColor: _overlay ? Colors.white.withValues(alpha: 0.2) : null,
+            thumbColor: widget._overlay ? Colors.white : scheme.primary,
+            overlayColor: widget._overlay
+                ? Colors.white.withValues(alpha: 0.2)
+                : null,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
             overlayShape: RoundSliderOverlayShape(
-              overlayRadius: _overlay ? 14 : 12,
+              overlayRadius: widget._overlay ? 14 : 12,
             ),
           ),
           child: Slider(
@@ -76,13 +104,21 @@ class SeekBar extends ConsumerWidget {
             semanticFormatterCallback: (milliseconds) => formatPlaybackClock(
               Duration(milliseconds: milliseconds.round()),
             ),
+            onChangeStart: (_) => _dragging = true,
             onChanged: (milliseconds) =>
-                handler.seek(Duration(milliseconds: milliseconds.round())),
+                setState(() => _dragValue = milliseconds),
+            onChangeEnd: (milliseconds) {
+              handler.seek(Duration(milliseconds: milliseconds.round()));
+              setState(() {
+                _dragging = false;
+                _dragEndedAt = DateTime.now();
+              });
+            },
           ),
         );
         return Column(
           mainAxisSize: MainAxisSize.min,
-          children: _overlay ? [labels, slider] : [slider, labels],
+          children: widget._overlay ? [labels, slider] : [slider, labels],
         );
       },
     );

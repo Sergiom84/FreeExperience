@@ -286,14 +286,15 @@ class _MineralFeature extends StatelessWidget {
   }
 }
 
-class _CatalogRow extends StatelessWidget {
+class _CatalogRow extends ConsumerWidget {
   const _CatalogRow({required this.item, required this.direction});
 
   final ContentItem item;
   final DesignDirection direction;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listened = ref.watch(isListenedProvider(item.id)).value ?? false;
     return Semantics(
       button: true,
       label: [item.title, if (item.author != null) item.author!].join(', '),
@@ -349,6 +350,17 @@ class _CatalogRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              if (listened) ...[
+                Semantics(
+                  label: 'Escuchado',
+                  child: Icon(
+                    Icons.check_circle,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
               Text(
                 item.durationLabel,
                 style: Theme.of(context).textTheme.labelMedium,

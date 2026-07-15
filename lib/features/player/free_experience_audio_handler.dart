@@ -113,14 +113,28 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
         : duration != null && position > duration
         ? duration
         : position;
-    return _player.seek(safePosition);
+    _pendingSeek = safePosition;
+    return _player.seek(safePosition).whenComplete(() {
+      if (_pendingSeek == safePosition) _pendingSeek = null;
+    });
   }
 
+  /// Avanza o retrocede respecto al último seek pedido, no respecto a la
+  /// posición real: con toques rápidos sobre una fuente de red la posición
+  /// tarda en actualizarse y los saltos se "tragaban" unos a otros.
+  Future<void> seekRelative(Duration offset) {
+    final base = _pendingSeek ?? _player.position;
+    return seek(base + offset);
+  }
+
+  Duration? _pendingSeek;
+
+  // 10 segundos, en línea con los iconos replay_10/forward_10 de la UI.
   @override
-  Future<void> fastForward() => seek(position + const Duration(seconds: 15));
+  Future<void> fastForward() => seekRelative(const Duration(seconds: 10));
 
   @override
-  Future<void> rewind() => seek(position - const Duration(seconds: 15));
+  Future<void> rewind() => seekRelative(const Duration(seconds: -10));
 
   @override
   Future<void> stop() async {

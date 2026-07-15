@@ -151,10 +151,8 @@ class _TransportControls extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                tooltip: 'Retroceder 15 segundos',
-                onPressed: () => handler.seek(
-                  handler.position - const Duration(seconds: 15),
-                ),
+                tooltip: 'Retroceder 10 segundos',
+                onPressed: handler.rewind,
                 icon: const Icon(Icons.replay_10, color: Colors.white),
                 iconSize: 42,
               ),
@@ -170,10 +168,8 @@ class _TransportControls extends StatelessWidget {
               ),
               const SizedBox(width: 24),
               IconButton(
-                tooltip: 'Avanzar 15 segundos',
-                onPressed: () => handler.seek(
-                  handler.position + const Duration(seconds: 15),
-                ),
+                tooltip: 'Avanzar 10 segundos',
+                onPressed: handler.fastForward,
                 icon: const Icon(Icons.forward_10, color: Colors.white),
                 iconSize: 42,
               ),
@@ -198,16 +194,18 @@ class _PlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Cristal casi transparente: un blur suave y apenas velo blanco para que
+    // la portada siga viéndose detrás del botón.
     return ClipOval(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
         child: Container(
           width: 96,
           height: 96,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+            color: Colors.white.withValues(alpha: 0.06),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
           ),
           child: IconButton(
             tooltip: playing ? 'Pausar' : 'Reproducir',
