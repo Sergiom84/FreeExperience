@@ -49,13 +49,12 @@ class ContentDetailScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
                 children: [
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 360),
-                      child: AspectRatio(
-                        aspectRatio: 4 / 5,
-                        child: ContentCover(path: content.coverPath),
-                      ),
+                  // Portada a ancho completo en 4:5 (encuadre canónico).
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: 4 / 5,
+                      child: ContentCover(path: content.coverPath),
                     ),
                   ),
                   const SizedBox(height: 24),

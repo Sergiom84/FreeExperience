@@ -85,6 +85,7 @@ flutter:
   assets:
     - assets/audio/
     - assets/images/
+    - assets/icons/nav/
   shaders:
     - shaders/ocean.frag
 

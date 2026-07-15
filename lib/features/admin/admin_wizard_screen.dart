@@ -5,10 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/util/app_log.dart';
+import '../../core/util/image_prep.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
 import 'admin_media_player.dart';
 import 'file_pick.dart';
+import 'widgets/cover_cropper.dart';
 
 enum _Step { cover, titleAuthor, body, media, recommendation, preview }
 
@@ -32,6 +34,10 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
 
   Uint8List? _coverBytes;
   String? _coverName;
+  // Encuadres elegidos en el recortador guiado. null = usa el recorte centrado
+  // por defecto (comportamiento anterior).
+  CropRect? _thumbCrop;
+  CropRect? _coverCrop;
   Uint8List? _mediaBytes;
   String? _mediaName;
 
@@ -138,6 +144,9 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
     setState(() {
       _coverBytes = bytes;
       _coverName = name;
+      // Nueva imagen: los recortadores reemitirán su encuadre centrado.
+      _thumbCrop = null;
+      _coverCrop = null;
     });
   }
 
@@ -165,6 +174,8 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
         externalUrl: _url.text,
         coverBytes: _coverBytes,
         coverFilename: _coverName,
+        thumbCrop: _thumbCrop,
+        coverCrop: _coverCrop,
         mediaBytes: _mediaBytes,
         mediaFilename: _mediaName,
         mediaDurationSeconds: _detectedDuration > 0 ? _detectedDuration : null,
@@ -293,6 +304,8 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
       bytes: _coverBytes,
       existingUrl: _existingCoverUrl,
       onPicked: _onCoverPicked,
+      onThumbCrop: (rect) => _thumbCrop = rect,
+      onCoverCrop: (rect) => _coverCrop = rect,
     ),
     _Step.titleAuthor => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -439,11 +452,15 @@ class _CoverStep extends StatelessWidget {
     required this.bytes,
     required this.existingUrl,
     required this.onPicked,
+    required this.onThumbCrop,
+    required this.onCoverCrop,
   });
 
   final Uint8List? bytes;
   final String? existingUrl;
   final void Function(Uint8List bytes, String name) onPicked;
+  final ValueChanged<CropRect> onThumbCrop;
+  final ValueChanged<CropRect> onCoverCrop;
 
   @override
   Widget build(BuildContext context) {
@@ -451,11 +468,48 @@ class _CoverStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _CoverFrame(
-          bytes: bytes,
-          url: existingUrl,
-          placeholder: const Icon(Icons.add_photo_alternate_outlined),
-        ),
+        if (bytes != null) ...[
+          // Encuadre guiado: la misma imagen se ajusta por separado para la
+          // miniatura (cuadrada) y para la portada grande (4:5, que también se
+          // usa en el reproductor).
+          _CropLabel('Miniatura — lista (cuadrada)'),
+          const SizedBox(height: 8),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: CoverCropper(
+                bytes: bytes!,
+                aspect: 1,
+                onChanged: onThumbCrop,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _CropLabel('Portada — detalle y reproductor (4:5)'),
+          const SizedBox(height: 8),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 300),
+              child: CoverCropper(
+                bytes: bytes!,
+                aspect: 4 / 5,
+                onChanged: onCoverCrop,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Arrastra y pellizca para encuadrar cada una.',
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+        ] else
+          _CoverFrame(
+            bytes: bytes,
+            url: existingUrl,
+            placeholder: const Icon(Icons.add_photo_alternate_outlined),
+          ),
         const SizedBox(height: 12),
         FilePickerButton(
           accept: 'image/*',
@@ -463,6 +517,22 @@ class _CoverStep extends StatelessWidget {
           onPicked: onPicked,
         ),
       ],
+    );
+  }
+}
+
+class _CropLabel extends StatelessWidget {
+  const _CropLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(
+        context,
+      ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
     );
   }
 }

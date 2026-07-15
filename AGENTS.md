@@ -9,7 +9,7 @@ Durante la beta interna conviven tres direcciones mediante un selector de evalua
 ## Product rules
 
 - No emojis en interfaz, datos semilla, notificaciones ni mensajes.
-- No subtítulos explicativos ni textos que describan la función de una pantalla. Excepción aprobada (2026-07-15): las cuatro secciones principales (Medita, Canaliza, Duerme, Inspira) llevan un descriptor breve bajo el título de su cabecera, tomado de la guía "tu portal, tus llaves".
+- No subtítulos explicativos ni textos que describan la función de una pantalla.
 - No gamificación, rachas, puntos ni afirmaciones terapéuticas.
 - No secretos privilegiados en el cliente.
 - RLS en todas las tablas expuestas de Supabase.

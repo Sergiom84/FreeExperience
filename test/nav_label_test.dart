@@ -8,7 +8,7 @@ import 'package:free_experience/core/design/design_direction.dart';
 /// Etiquetas reales del bottom bar (formas cortas). Deben caber en una sola
 /// línea en la pantalla más estrecha soportada (375 pt) para las tres
 /// direcciones visuales.
-const _labels = ['Meditar', 'Prácticas', 'Canales', 'Inspirar'];
+const _labels = ['Medita', 'Canaliza', 'Duerme', 'Inspira'];
 
 void main() {
   for (final direction in DesignDirection.values) {

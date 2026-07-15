@@ -36,10 +36,18 @@ class FullPlayerScreen extends ConsumerWidget {
           return Stack(
             fit: StackFit.expand,
             children: [
-              if (content != null)
-                ContentCover(path: content.coverPath)
-              else
-                const ColoredBox(color: Colors.black),
+              const ColoredBox(color: Colors.black),
+              if (content != null) ...[
+                // Fondo ambiental: la misma portada difuminada llenando la
+                // pantalla, para que no queden bandas negras planas.
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+                  child: ContentCover(path: content.coverPath),
+                ),
+                // Portada real contenida (4:5): se ve completa, sin recortar
+                // ni "sobresalir".
+                ContentCover(path: content.coverPath, fit: BoxFit.contain),
+              ],
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

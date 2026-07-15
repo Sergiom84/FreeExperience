@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers.dart';
 
 class ScreenHeader extends ConsumerWidget {
-  const ScreenHeader({required this.title, super.key});
+  const ScreenHeader({required this.title, this.subtitle, super.key});
 
   final String title;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,16 +20,31 @@ class ScreenHeader extends ConsumerWidget {
           height: 58,
           child: Row(
             children: [
-              Text(
-                'Free Experience',
-                style: Theme.of(context).textTheme.titleLarge,
+              // Título "Tu portal · Tus llaves" como imagen: conserva la
+              // tipografía dorada exacta de la guía. Fondo oscuro propio que
+              // mezcla con la cabecera.
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Image(
+                    image: const AssetImage('assets/icons/nav/portal.png'),
+                    height: 20,
+                    fit: BoxFit.contain,
+                    semanticLabel: 'Tu portal · Tus llaves',
+                  ),
+                ),
               ),
               const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Inicio',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => context.go('/bienvenida'),
-                icon: const Icon(Icons.home_outlined, size: 20),
+                icon: const Image(
+                  image: AssetImage('assets/icons/nav/llave.png'),
+                  width: 30,
+                  height: 30,
+                  fit: BoxFit.contain,
+                ),
               ),
               const Spacer(),
               IconButton(
@@ -42,6 +58,15 @@ class ScreenHeader extends ConsumerWidget {
         ),
         const SizedBox(height: 20),
         Text(title, style: Theme.of(context).textTheme.displayMedium),
+        if (subtitle != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            subtitle!,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
         const SizedBox(height: 22),
       ],
     );

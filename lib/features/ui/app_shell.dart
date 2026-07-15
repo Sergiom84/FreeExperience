@@ -20,8 +20,8 @@ class AppShell extends StatelessWidget {
           // resuelve color, peso y tamaño según el estado seleccionado. El
           // clamp del textScaler evita que el tamaño de texto del sistema
           // (accesibilidad) parta las etiquetas en dos líneas. Las etiquetas
-          // del bottom bar usan formas cortas ("Canales", "Inspirar") porque
-          // los nombres completos no caben en una línea a 4 pestañas; el nombre
+          // del bottom bar usan formas cortas de una palabra porque los
+          // nombres completos no caben en una línea a 4 pestañas; el nombre
           // completo de cada sección aparece en su cabecera.
           MediaQuery.withClampedTextScaling(
             maxScaleFactor: 1.0,
@@ -33,29 +33,49 @@ class AppShell extends StatelessWidget {
               ),
               destinations: const [
                 NavigationDestination(
-                  icon: Icon(Icons.water_drop_outlined),
-                  selectedIcon: Icon(Icons.water_drop),
-                  label: 'Meditar',
+                  icon: _NavImageIcon('assets/icons/nav/medita.png'),
+                  label: 'Medita',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.self_improvement_outlined),
-                  selectedIcon: Icon(Icons.self_improvement),
-                  label: 'Prácticas',
+                  icon: _NavImageIcon('assets/icons/nav/canaliza.png'),
+                  label: 'Canaliza',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.graphic_eq_outlined),
-                  selectedIcon: Icon(Icons.graphic_eq),
-                  label: 'Canales',
+                  icon: _NavImageIcon('assets/icons/nav/duerme.png'),
+                  label: 'Duerme',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.slow_motion_video_outlined),
-                  selectedIcon: Icon(Icons.slow_motion_video),
-                  label: 'Inspirar',
+                  icon: _NavImageIcon('assets/icons/nav/inspira.png'),
+                  label: 'Inspira',
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Icono de nav con imagen rica (fondo oscuro propio + brillo dorado). Se
+/// muestra tal cual, sin tinte ni recorte de fondo, en un tile redondeado para
+/// que los bordes oscuros lean como intencionados sobre la barra. `BoxFit.cover`
+/// recorta al cuadrado centrado, dejando el sujeto (figura, llave, luna,
+/// corazón) centrado en el tile.
+class _NavImageIcon extends StatelessWidget {
+  const _NavImageIcon(this.asset);
+
+  final String asset;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.all(Radius.circular(8)),
+      child: Image(
+        image: AssetImage(asset),
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
       ),
     );
   }

@@ -71,18 +71,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/practicas',
+                path: '/canalizaciones',
                 builder: (context, state) =>
-                    const CatalogScreen(kind: ContentKind.practice),
+                    const CatalogScreen(kind: ContentKind.channeling),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/canalizaciones',
+                path: '/practicas',
                 builder: (context, state) =>
-                    const CatalogScreen(kind: ContentKind.channeling),
+                    const CatalogScreen(kind: ContentKind.practice),
               ),
             ],
           ),

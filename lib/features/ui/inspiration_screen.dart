@@ -19,7 +19,10 @@ class InspirationScreen extends ConsumerWidget {
           children: [
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
-              child: ScreenHeader(title: 'Inspiración'),
+              child: ScreenHeader(
+                title: 'Inspira',
+                subtitle: 'revelaciones que iluminan tu alma y tu camino',
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),

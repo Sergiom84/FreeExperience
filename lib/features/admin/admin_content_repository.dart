@@ -67,6 +67,8 @@ class ContentDraftInput {
     this.externalUrl,
     this.coverBytes,
     this.coverFilename,
+    this.thumbCrop,
+    this.coverCrop,
     this.mediaBytes,
     this.mediaFilename,
     this.mediaDurationSeconds,
@@ -79,6 +81,11 @@ class ContentDraftInput {
   final String? externalUrl;
   final Uint8List? coverBytes;
   final String? coverFilename;
+
+  /// Encuadres elegidos en el recortador guiado. Si son null se recorta al
+  /// centro (miniatura 1:1, portada 4:5), como antes.
+  final CropRect? thumbCrop;
+  final CropRect? coverCrop;
   final Uint8List? mediaBytes;
   final String? mediaFilename;
 
@@ -228,18 +235,42 @@ class AdminContentRepository {
     }
 
     if (input.coverBytes != null) {
-      final prepared = _prepareCover(input.coverBytes!, input.coverFilename);
-      final path = '$id/cover.${prepared.ext}';
+      // Dos variantes encuadradas por separado: portada 4:5 (detalle/player) y
+      // miniatura 1:1 (listas). Si el usuario no ajustó el encuadre, se recorta
+      // al centro.
+      final cover = _prepareVariant(
+        input.coverBytes!,
+        input.coverFilename,
+        aspect: 4 / 5,
+        crop: input.coverCrop,
+      );
+      final coverPath = '$id/cover.${cover.ext}';
       await _remote.storage
           .from('covers')
           .uploadBinary(
-            path,
-            prepared.bytes,
-            fileOptions: FileOptions(contentType: prepared.mime, upsert: true),
+            coverPath,
+            cover.bytes,
+            fileOptions: FileOptions(contentType: cover.mime, upsert: true),
           );
+
+      final thumb = _prepareVariant(
+        input.coverBytes!,
+        input.coverFilename,
+        aspect: 1,
+        crop: input.thumbCrop,
+      );
+      final thumbPath = '$id/thumb.${thumb.ext}';
+      await _remote.storage
+          .from('covers')
+          .uploadBinary(
+            thumbPath,
+            thumb.bytes,
+            fileOptions: FileOptions(contentType: thumb.mime, upsert: true),
+          );
+
       await _remote
           .from('content_items')
-          .update({'cover_path': path})
+          .update({'cover_path': coverPath, 'thumb_path': thumbPath})
           .eq('id', id);
     }
 
@@ -320,12 +351,26 @@ class AdminContentRepository {
   /// modo que la imagen subida se muestre igual en ambas. Para formatos que el
   /// decodificador no lee (p. ej. HEIC) se conservan los bytes originales con
   /// su mime real.
-  _PreparedCover _prepareCover(Uint8List bytes, String? filename) {
-    final prepared = prepareImage(
-      bytes,
-      maxDimension: 1600,
-      targetAspect: 4 / 5,
-    );
+  /// Genera una variante de portada: si [crop] viene del recortador guiado se
+  /// recorta a ese rectángulo; si no, se recorta centrado a [aspect]. Lado
+  /// mayor <= 1600, JPEG. Para formatos no decodificables se conservan los
+  /// bytes originales con su mime real.
+  _PreparedCover _prepareVariant(
+    Uint8List bytes,
+    String? filename, {
+    required double aspect,
+    CropRect? crop,
+  }) {
+    final prepared = crop != null
+        ? cropImageToNormalizedRect(
+            bytes,
+            left: crop.left,
+            top: crop.top,
+            width: crop.width,
+            height: crop.height,
+            maxDimension: 1600,
+          )
+        : prepareImage(bytes, maxDimension: 1600, targetAspect: aspect);
     if (prepared != null) {
       return _PreparedCover(
         bytes: prepared.bytes,

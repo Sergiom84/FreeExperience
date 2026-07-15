@@ -86,6 +86,17 @@ class $CachedContentItemsTable extends CachedContentItems
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _thumbPathMeta = const VerificationMeta(
+    'thumbPath',
+  );
+  @override
+  late final GeneratedColumn<String> thumbPath = GeneratedColumn<String>(
+    'thumb_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _mediaPathMeta = const VerificationMeta(
     'mediaPath',
   );
@@ -168,6 +179,7 @@ class $CachedContentItemsTable extends CachedContentItems
     body,
     externalUrl,
     coverPath,
+    thumbPath,
     mediaPath,
     durationSeconds,
     featured,
@@ -242,6 +254,12 @@ class $CachedContentItemsTable extends CachedContentItems
       );
     } else if (isInserting) {
       context.missing(_coverPathMeta);
+    }
+    if (data.containsKey('thumb_path')) {
+      context.handle(
+        _thumbPathMeta,
+        thumbPath.isAcceptableOrUnknown(data['thumb_path']!, _thumbPathMeta),
+      );
     }
     if (data.containsKey('media_path')) {
       context.handle(
@@ -328,6 +346,10 @@ class $CachedContentItemsTable extends CachedContentItems
         DriftSqlType.string,
         data['${effectivePrefix}cover_path'],
       )!,
+      thumbPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}thumb_path'],
+      ),
       mediaPath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}media_path'],
@@ -371,6 +393,7 @@ class CachedContentItem extends DataClass
   final String? body;
   final String? externalUrl;
   final String coverPath;
+  final String? thumbPath;
   final String? mediaPath;
   final int durationSeconds;
   final bool featured;
@@ -386,6 +409,7 @@ class CachedContentItem extends DataClass
     this.body,
     this.externalUrl,
     required this.coverPath,
+    this.thumbPath,
     this.mediaPath,
     required this.durationSeconds,
     required this.featured,
@@ -410,6 +434,9 @@ class CachedContentItem extends DataClass
       map['external_url'] = Variable<String>(externalUrl);
     }
     map['cover_path'] = Variable<String>(coverPath);
+    if (!nullToAbsent || thumbPath != null) {
+      map['thumb_path'] = Variable<String>(thumbPath);
+    }
     if (!nullToAbsent || mediaPath != null) {
       map['media_path'] = Variable<String>(mediaPath);
     }
@@ -437,6 +464,9 @@ class CachedContentItem extends DataClass
           ? const Value.absent()
           : Value(externalUrl),
       coverPath: Value(coverPath),
+      thumbPath: thumbPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbPath),
       mediaPath: mediaPath == null && nullToAbsent
           ? const Value.absent()
           : Value(mediaPath),
@@ -464,6 +494,7 @@ class CachedContentItem extends DataClass
       body: serializer.fromJson<String?>(json['body']),
       externalUrl: serializer.fromJson<String?>(json['externalUrl']),
       coverPath: serializer.fromJson<String>(json['coverPath']),
+      thumbPath: serializer.fromJson<String?>(json['thumbPath']),
       mediaPath: serializer.fromJson<String?>(json['mediaPath']),
       durationSeconds: serializer.fromJson<int>(json['durationSeconds']),
       featured: serializer.fromJson<bool>(json['featured']),
@@ -484,6 +515,7 @@ class CachedContentItem extends DataClass
       'body': serializer.toJson<String?>(body),
       'externalUrl': serializer.toJson<String?>(externalUrl),
       'coverPath': serializer.toJson<String>(coverPath),
+      'thumbPath': serializer.toJson<String?>(thumbPath),
       'mediaPath': serializer.toJson<String?>(mediaPath),
       'durationSeconds': serializer.toJson<int>(durationSeconds),
       'featured': serializer.toJson<bool>(featured),
@@ -502,6 +534,7 @@ class CachedContentItem extends DataClass
     Value<String?> body = const Value.absent(),
     Value<String?> externalUrl = const Value.absent(),
     String? coverPath,
+    Value<String?> thumbPath = const Value.absent(),
     Value<String?> mediaPath = const Value.absent(),
     int? durationSeconds,
     bool? featured,
@@ -517,6 +550,7 @@ class CachedContentItem extends DataClass
     body: body.present ? body.value : this.body,
     externalUrl: externalUrl.present ? externalUrl.value : this.externalUrl,
     coverPath: coverPath ?? this.coverPath,
+    thumbPath: thumbPath.present ? thumbPath.value : this.thumbPath,
     mediaPath: mediaPath.present ? mediaPath.value : this.mediaPath,
     durationSeconds: durationSeconds ?? this.durationSeconds,
     featured: featured ?? this.featured,
@@ -536,6 +570,7 @@ class CachedContentItem extends DataClass
           ? data.externalUrl.value
           : this.externalUrl,
       coverPath: data.coverPath.present ? data.coverPath.value : this.coverPath,
+      thumbPath: data.thumbPath.present ? data.thumbPath.value : this.thumbPath,
       mediaPath: data.mediaPath.present ? data.mediaPath.value : this.mediaPath,
       durationSeconds: data.durationSeconds.present
           ? data.durationSeconds.value
@@ -560,6 +595,7 @@ class CachedContentItem extends DataClass
           ..write('body: $body, ')
           ..write('externalUrl: $externalUrl, ')
           ..write('coverPath: $coverPath, ')
+          ..write('thumbPath: $thumbPath, ')
           ..write('mediaPath: $mediaPath, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('featured: $featured, ')
@@ -580,6 +616,7 @@ class CachedContentItem extends DataClass
     body,
     externalUrl,
     coverPath,
+    thumbPath,
     mediaPath,
     durationSeconds,
     featured,
@@ -599,6 +636,7 @@ class CachedContentItem extends DataClass
           other.body == this.body &&
           other.externalUrl == this.externalUrl &&
           other.coverPath == this.coverPath &&
+          other.thumbPath == this.thumbPath &&
           other.mediaPath == this.mediaPath &&
           other.durationSeconds == this.durationSeconds &&
           other.featured == this.featured &&
@@ -616,6 +654,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
   final Value<String?> body;
   final Value<String?> externalUrl;
   final Value<String> coverPath;
+  final Value<String?> thumbPath;
   final Value<String?> mediaPath;
   final Value<int> durationSeconds;
   final Value<bool> featured;
@@ -632,6 +671,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
     this.body = const Value.absent(),
     this.externalUrl = const Value.absent(),
     this.coverPath = const Value.absent(),
+    this.thumbPath = const Value.absent(),
     this.mediaPath = const Value.absent(),
     this.durationSeconds = const Value.absent(),
     this.featured = const Value.absent(),
@@ -649,6 +689,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
     this.body = const Value.absent(),
     this.externalUrl = const Value.absent(),
     required String coverPath,
+    this.thumbPath = const Value.absent(),
     this.mediaPath = const Value.absent(),
     this.durationSeconds = const Value.absent(),
     this.featured = const Value.absent(),
@@ -670,6 +711,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
     Expression<String>? body,
     Expression<String>? externalUrl,
     Expression<String>? coverPath,
+    Expression<String>? thumbPath,
     Expression<String>? mediaPath,
     Expression<int>? durationSeconds,
     Expression<bool>? featured,
@@ -687,6 +729,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
       if (body != null) 'body': body,
       if (externalUrl != null) 'external_url': externalUrl,
       if (coverPath != null) 'cover_path': coverPath,
+      if (thumbPath != null) 'thumb_path': thumbPath,
       if (mediaPath != null) 'media_path': mediaPath,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (featured != null) 'featured': featured,
@@ -706,6 +749,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
     Value<String?>? body,
     Value<String?>? externalUrl,
     Value<String>? coverPath,
+    Value<String?>? thumbPath,
     Value<String?>? mediaPath,
     Value<int>? durationSeconds,
     Value<bool>? featured,
@@ -723,6 +767,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
       body: body ?? this.body,
       externalUrl: externalUrl ?? this.externalUrl,
       coverPath: coverPath ?? this.coverPath,
+      thumbPath: thumbPath ?? this.thumbPath,
       mediaPath: mediaPath ?? this.mediaPath,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       featured: featured ?? this.featured,
@@ -760,6 +805,9 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
     if (coverPath.present) {
       map['cover_path'] = Variable<String>(coverPath.value);
     }
+    if (thumbPath.present) {
+      map['thumb_path'] = Variable<String>(thumbPath.value);
+    }
     if (mediaPath.present) {
       map['media_path'] = Variable<String>(mediaPath.value);
     }
@@ -795,6 +843,7 @@ class CachedContentItemsCompanion extends UpdateCompanion<CachedContentItem> {
           ..write('body: $body, ')
           ..write('externalUrl: $externalUrl, ')
           ..write('coverPath: $coverPath, ')
+          ..write('thumbPath: $thumbPath, ')
           ..write('mediaPath: $mediaPath, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('featured: $featured, ')
@@ -2387,6 +2436,7 @@ typedef $$CachedContentItemsTableCreateCompanionBuilder =
       Value<String?> body,
       Value<String?> externalUrl,
       required String coverPath,
+      Value<String?> thumbPath,
       Value<String?> mediaPath,
       Value<int> durationSeconds,
       Value<bool> featured,
@@ -2405,6 +2455,7 @@ typedef $$CachedContentItemsTableUpdateCompanionBuilder =
       Value<String?> body,
       Value<String?> externalUrl,
       Value<String> coverPath,
+      Value<String?> thumbPath,
       Value<String?> mediaPath,
       Value<int> durationSeconds,
       Value<bool> featured,
@@ -2460,6 +2511,11 @@ class $$CachedContentItemsTableFilterComposer
 
   ColumnFilters<String> get coverPath => $composableBuilder(
     column: $table.coverPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get thumbPath => $composableBuilder(
+    column: $table.thumbPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2543,6 +2599,11 @@ class $$CachedContentItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get thumbPath => $composableBuilder(
+    column: $table.thumbPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get mediaPath => $composableBuilder(
     column: $table.mediaPath,
     builder: (column) => ColumnOrderings(column),
@@ -2608,6 +2669,9 @@ class $$CachedContentItemsTableAnnotationComposer
 
   GeneratedColumn<String> get coverPath =>
       $composableBuilder(column: $table.coverPath, builder: (column) => column);
+
+  GeneratedColumn<String> get thumbPath =>
+      $composableBuilder(column: $table.thumbPath, builder: (column) => column);
 
   GeneratedColumn<String> get mediaPath =>
       $composableBuilder(column: $table.mediaPath, builder: (column) => column);
@@ -2680,6 +2744,7 @@ class $$CachedContentItemsTableTableManager
                 Value<String?> body = const Value.absent(),
                 Value<String?> externalUrl = const Value.absent(),
                 Value<String> coverPath = const Value.absent(),
+                Value<String?> thumbPath = const Value.absent(),
                 Value<String?> mediaPath = const Value.absent(),
                 Value<int> durationSeconds = const Value.absent(),
                 Value<bool> featured = const Value.absent(),
@@ -2696,6 +2761,7 @@ class $$CachedContentItemsTableTableManager
                 body: body,
                 externalUrl: externalUrl,
                 coverPath: coverPath,
+                thumbPath: thumbPath,
                 mediaPath: mediaPath,
                 durationSeconds: durationSeconds,
                 featured: featured,
@@ -2714,6 +2780,7 @@ class $$CachedContentItemsTableTableManager
                 Value<String?> body = const Value.absent(),
                 Value<String?> externalUrl = const Value.absent(),
                 required String coverPath,
+                Value<String?> thumbPath = const Value.absent(),
                 Value<String?> mediaPath = const Value.absent(),
                 Value<int> durationSeconds = const Value.absent(),
                 Value<bool> featured = const Value.absent(),
@@ -2730,6 +2797,7 @@ class $$CachedContentItemsTableTableManager
                 body: body,
                 externalUrl: externalUrl,
                 coverPath: coverPath,
+                thumbPath: thumbPath,
                 mediaPath: mediaPath,
                 durationSeconds: durationSeconds,
                 featured: featured,

@@ -134,6 +134,7 @@ class DriftContentRepository implements ContentRepository {
         body: Value(item.body),
         externalUrl: Value(item.externalUrl),
         coverPath: item.coverPath,
+        thumbPath: Value(item.thumbPath),
         mediaPath: Value(item.mediaPath),
         durationSeconds: Value(item.duration.inSeconds),
         featured: Value(item.featured),
@@ -150,6 +151,7 @@ class DriftContentRepository implements ContentRepository {
     body: row.body,
     externalUrl: row.externalUrl,
     coverPath: row.coverPath,
+    thumbPath: row.thumbPath,
     mediaPath: row.mediaPath,
     duration: Duration(seconds: row.durationSeconds),
     featured: row.featured,
@@ -166,6 +168,7 @@ class DriftContentRepository implements ContentRepository {
         .where((asset) => asset['kind'] == preferredKind)
         .firstOrNull;
     final coverPath = row['cover_path'] as String? ?? '';
+    final thumbPath = row['thumb_path'] as String?;
     final storagePath = media?['storage_path'] as String?;
     return ContentItem(
       id: row['id'] as String,
@@ -177,6 +180,11 @@ class DriftContentRepository implements ContentRepository {
       coverPath: coverPath.startsWith('http')
           ? coverPath
           : _remote!.storage.from('covers').getPublicUrl(coverPath),
+      thumbPath: (thumbPath == null || thumbPath.isEmpty)
+          ? null
+          : (thumbPath.startsWith('http')
+                ? thumbPath
+                : _remote!.storage.from('covers').getPublicUrl(thumbPath)),
       mediaPath: storagePath == null ? null : 'storage://$storagePath',
       duration: Duration(seconds: row['duration_seconds'] as int? ?? 0),
       featured: row['is_featured'] as bool? ?? false,

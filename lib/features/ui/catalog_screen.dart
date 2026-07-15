@@ -30,7 +30,10 @@ class CatalogScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
               sliver: SliverList.list(
                 children: [
-                  ScreenHeader(title: kind.label),
+                  ScreenHeader(
+                    title: kind.sectionTitle,
+                    subtitle: kind.tagline,
+                  ),
                   items.when(
                     loading: () => const CatalogLoading(),
                     error: (error, stackTrace) => CatalogError(
@@ -51,7 +54,9 @@ class CatalogScreen extends ConsumerWidget {
 
 // Geometría compartida entre las tarjetas reales y sus esqueletos de carga,
 // para que un ajuste de layout no requiera dos ediciones.
-const _umbralFeatureRatio = 1.06;
+// Portada destacada en 4:5 (mismo encuadre que la portada subida y el detalle),
+// para que el retrato no se recorte en la card principal.
+const _umbralFeatureRatio = 4 / 5;
 const _materiaFeatureHeight = 330.0;
 const _mineralFeatureRatio = 1.42;
 const _rowMinHeight = 82.0;
@@ -305,10 +310,12 @@ class _CatalogRow extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                width: 88,
-                height: 66,
+                width: 72,
+                height: 72,
                 child: ContentCover(
-                  path: item.coverPath,
+                  // Miniatura cuadrada: usa el recorte 1:1 si existe, si no la
+                  // portada 4:5 recortada al centro.
+                  path: item.thumbOrCover,
                   borderRadius: BorderRadius.circular(
                     direction == DesignDirection.materia ? 4 : 2,
                   ),

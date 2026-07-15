@@ -13,6 +13,7 @@ class CachedContentItems extends Table {
   TextColumn get body => text().nullable()();
   TextColumn get externalUrl => text().nullable()();
   TextColumn get coverPath => text()();
+  TextColumn get thumbPath => text().nullable()();
   TextColumn get mediaPath => text().nullable()();
   IntColumn get durationSeconds => integer().withDefault(const Constant(0))();
   BoolColumn get featured => boolean().withDefault(const Constant(false))();
@@ -93,7 +94,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      // v2: recorte cuadrado para miniaturas.
+      if (from < 2) {
+        await migrator.addColumn(
+          cachedContentItems,
+          cachedContentItems.thumbPath,
+        );
+      }
+    },
+  );
 
   Future<int> contentCount() async {
     final count = cachedContentItems.id.count();

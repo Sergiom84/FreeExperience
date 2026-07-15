@@ -118,7 +118,9 @@ abstract final class AppTheme {
     );
 
     return base.copyWith(
-      scaffoldBackgroundColor: background,
+      // Transparente para que el fondo global de nubes (AppBackground, montado
+      // en MaterialApp.builder) se vea a través de todas las pantallas.
+      scaffoldBackgroundColor: Colors.transparent,
       colorScheme: scheme,
       textTheme: textTheme,
       focusColor: focusRing,
@@ -127,7 +129,8 @@ abstract final class AppTheme {
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: background,
+        // Transparente: el fondo global (AppBackground) se ve tras la barra.
+        backgroundColor: Colors.transparent,
         foregroundColor: foreground,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: textTheme.titleLarge,
@@ -144,8 +147,12 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
         elevation: 0,
-        backgroundColor: background,
-        indicatorColor: accent.withValues(alpha: 0.12),
+        // Transparente para que el fondo global cubra también tras la barra de
+        // navegación. El velo de AppBackground oscurece la zona inferior lo
+        // suficiente para mantener legibles iconos y etiquetas.
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return textTheme.labelSmall?.copyWith(
@@ -160,7 +167,7 @@ abstract final class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return IconThemeData(color: selected ? accent : muted, size: 21);
+          return IconThemeData(color: selected ? accent : muted, size: 27);
         }),
       ),
       filledButtonTheme: FilledButtonThemeData(
