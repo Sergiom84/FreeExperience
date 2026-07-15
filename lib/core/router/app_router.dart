@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,7 +19,13 @@ import '../../features/ui/legal_screen.dart';
 import '../../features/ui/profile_screen.dart';
 import '../../features/ui/welcome_screen.dart';
 import '../../features/ui/welcome_sunset_screen.dart';
+import '../../features/ui/widgets/app_background.dart';
 import '../providers.dart';
+
+/// Envuelve cada ruta en el fondo global. Al ser una capa opaca (imagen +
+/// velo) por página, la ruta entrante oculta la saliente durante la transición
+/// (antes, con scaffolds transparentes, se veía la anterior "arrastrarse").
+Widget _bg(Widget child) => AppBackground(child: child);
 
 class _AuthNotifier extends ChangeNotifier {
   _AuthNotifier(Ref ref) {
@@ -46,18 +52,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => _bg(const LoginScreen()),
+      ),
       GoRoute(
         path: '/bienvenida',
-        builder: (context, state) => const WelcomeSunsetScreen(),
+        builder: (context, state) => _bg(const WelcomeSunsetScreen()),
       ),
       GoRoute(
         path: '/bienvenida-orbita',
-        builder: (context, state) => const WelcomeScreen(),
+        builder: (context, state) => _bg(const WelcomeScreen()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
-            AppShell(navigationShell: navigationShell),
+            _bg(AppShell(navigationShell: navigationShell)),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -99,63 +108,73 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/content/:id',
         builder: (context, state) =>
-            ContentDetailScreen(contentId: state.pathParameters['id']!),
+            _bg(ContentDetailScreen(contentId: state.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/player',
-        builder: (context, state) => const FullPlayerScreen(),
+        builder: (context, state) => _bg(const FullPlayerScreen()),
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
+        builder: (context, state) => _bg(const ProfileScreen()),
       ),
       GoRoute(
         path: '/favorites',
-        builder: (context, state) => const FavoritesScreen(),
+        builder: (context, state) => _bg(const FavoritesScreen()),
       ),
       GoRoute(
         path: '/admin',
-        builder: (context, state) => const AdminGateScreen(),
+        builder: (context, state) => _bg(const AdminGateScreen()),
       ),
       GoRoute(
         path: '/admin/:kind/nuevo',
-        builder: (context, state) => AdminGuard(
-          child: AdminWizardScreen(
-            kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+        builder: (context, state) => _bg(
+          AdminGuard(
+            child: AdminWizardScreen(
+              kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+            ),
           ),
         ),
       ),
       GoRoute(
         path: '/admin/:kind/editar/:id',
-        builder: (context, state) => AdminGuard(
-          child: AdminWizardScreen(
-            kind: ContentKindLabel.parse(state.pathParameters['kind']!),
-            editId: state.pathParameters['id'],
+        builder: (context, state) => _bg(
+          AdminGuard(
+            child: AdminWizardScreen(
+              kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+              editId: state.pathParameters['id'],
+            ),
           ),
         ),
       ),
       GoRoute(
         path: '/admin/extras',
         builder: (context, state) =>
-            const AdminGuard(child: AdminExtrasScreen()),
+            _bg(const AdminGuard(child: AdminExtrasScreen())),
       ),
       GoRoute(
         path: '/admin/extras/introduccion',
         builder: (context, state) =>
-            const AdminGuard(child: AdminIntroScreen()),
+            _bg(const AdminGuard(child: AdminIntroScreen())),
       ),
       GoRoute(
         path: '/admin/:kind',
-        builder: (context, state) => AdminGuard(
-          child: AdminSectionScreen(
-            kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+        builder: (context, state) => _bg(
+          AdminGuard(
+            child: AdminSectionScreen(
+              kind: ContentKindLabel.parse(state.pathParameters['kind']!),
+            ),
           ),
         ),
       ),
       GoRoute(
         path: '/legal/:document',
-        builder: (context, state) => LegalScreen(
-          document: LegalDocumentCopy.parse(state.pathParameters['document']!),
+        builder: (context, state) => _bg(
+          LegalScreen(
+            document: LegalDocumentCopy.parse(
+              state.pathParameters['document']!,
+            ),
+          ),
         ),
       ),
     ],

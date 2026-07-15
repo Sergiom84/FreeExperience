@@ -24,7 +24,7 @@ class ContentDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final item = ref.watch(contentByIdProvider(contentId));
     return Scaffold(
-      bottomNavigationBar: const MiniPlayer(),
+      bottomNavigationBar: const SafeArea(top: false, child: MiniPlayer()),
       appBar: AppBar(
         actions: [
           _FavoriteButton(contentId: contentId),

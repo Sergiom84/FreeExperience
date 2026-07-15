@@ -22,6 +22,10 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
             processingState: AudioProcessingState.completed,
           ),
         );
+        // Al terminar, oculta el reproductor (mini y grande) tras una breve
+        // pausa. Se cancela si el usuario vuelve a reproducir o carga otra
+        // pista dentro de ese margen. Con LoopMode.one no ocurre (repite).
+        _scheduleHide();
       }
     });
   }
@@ -29,6 +33,23 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
   final AudioPlayer _player = AudioPlayer();
   StreamSubscription<AudioInterruptionEvent>? _interruptionSubscription;
   StreamSubscription<void>? _noisySubscription;
+  Timer? _hideTimer;
+
+  static const _hideDelay = Duration(seconds: 3);
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(_hideDelay, () {
+      // Nada que sonar: se limpia la pista para que la UI oculte el player.
+      mediaItem.add(null);
+      unawaited(_player.stop());
+    });
+  }
+
+  void _cancelHide() {
+    _hideTimer?.cancel();
+    _hideTimer = null;
+  }
 
   Duration get position => _player.position;
 
@@ -53,6 +74,7 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
   }
 
   Future<void> load(MediaItem item, Uri uri) async {
+    _cancelHide();
     mediaItem.add(item);
     if (uri.scheme == 'asset') {
       final assetPath = uri.path.startsWith('/')
@@ -72,7 +94,10 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() {
+    _cancelHide();
+    return _player.play();
+  }
 
   @override
   Future<void> pause() => _player.pause();
@@ -104,6 +129,7 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
   }
 
   Future<void> dispose() async {
+    _cancelHide();
     await _interruptionSubscription?.cancel();
     await _noisySubscription?.cancel();
     await _player.dispose();

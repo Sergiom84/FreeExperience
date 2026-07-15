@@ -17,36 +17,37 @@ class ScreenHeader extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 58,
+          height: 66,
           child: Row(
             children: [
-              // Título "Tu portal · Tus llaves" como imagen: conserva la
-              // tipografía dorada exacta de la guía. Fondo oscuro propio que
-              // mezcla con la cabecera.
-              Flexible(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Image(
-                    image: const AssetImage('assets/icons/nav/portal.png'),
-                    height: 20,
-                    fit: BoxFit.contain,
-                    semanticLabel: 'Tu portal · Tus llaves',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Inicio',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => context.go('/bienvenida'),
                 icon: const Image(
                   image: AssetImage('assets/icons/nav/llave.png'),
-                  width: 30,
-                  height: 30,
+                  width: 44,
+                  height: 44,
                   fit: BoxFit.contain,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 6),
+              // Título "Tu portal · Tus llaves" como imagen (tipografía dorada
+              // exacta de la guía). FittedBox lo agranda hasta donde cabe en el
+              // ancho disponible, con tope de 40px de alto.
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Image(
+                    image: const AssetImage('assets/icons/nav/portal.png'),
+                    height: 40,
+                    fit: BoxFit.contain,
+                    semanticLabel: 'Tu portal · Tus llaves',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Guardados',
                 onPressed: () => context.push('/favorites'),

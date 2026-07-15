@@ -146,31 +146,29 @@ class _SectionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          color.withValues(alpha: 0.85),
-                          color.withValues(alpha: 0.45),
-                        ],
-                      ),
-                    ),
-                    child: Center(
-                      child: image != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(
-                                image!,
-                                width: 58,
-                                height: 58,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : Icon(icon, color: Colors.white, size: 34),
-                    ),
-                  ),
+                  child: image != null
+                      // La imagen rica llena todo el recuadro.
+                      ? Image.asset(
+                          image!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        )
+                      : DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                color.withValues(alpha: 0.85),
+                                color.withValues(alpha: 0.45),
+                              ],
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(icon, color: Colors.white, size: 34),
+                          ),
+                        ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(

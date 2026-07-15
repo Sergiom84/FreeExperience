@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/design/app_theme.dart';
 import 'core/providers.dart';
 import 'core/router/app_router.dart';
-import 'features/ui/widgets/app_background.dart';
 
 class FreeExperienceApp extends ConsumerWidget {
   const FreeExperienceApp({super.key});
@@ -26,7 +25,7 @@ class FreeExperienceApp extends ConsumerWidget {
             boldText: media.boldText,
             disableAnimations: media.disableAnimations,
           ),
-          child: AppBackground(child: child ?? const SizedBox.shrink()),
+          child: child ?? const SizedBox.shrink(),
         );
       },
     );
