@@ -35,7 +35,7 @@ extension ContentKindLabel on ContentKind {
   // por `sectionTitle`. null para los kinds sin pantalla de nav propia.
   String? get tagline => switch (this) {
     ContentKind.meditation => 'con energía crística',
-    ContentKind.channeling => 'del alma',
+    ContentKind.channeling => 'con alma',
     ContentKind.practice => 'nocturna para descansar y soltar',
     _ => null,
   };

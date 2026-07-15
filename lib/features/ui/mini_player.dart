@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,17 +8,61 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers.dart';
 import 'widgets/seek_bar.dart';
 
-class MiniPlayer extends ConsumerWidget {
+class MiniPlayer extends ConsumerStatefulWidget {
   const MiniPlayer({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MiniPlayer> createState() => _MiniPlayerState();
+}
+
+class _MiniPlayerState extends ConsumerState<MiniPlayer> {
+  StreamSubscription<PlaybackState>? _stateSub;
+  Timer? _hideTimer;
+
+  /// Se oculta la barra cuando la pista terminó hace ya unos segundos. Red de
+  /// seguridad de UI (además de la limpieza del mediaItem en el handler): aquí
+  /// se decide con el propio `PlaybackState` que ya observamos.
+  bool _hidden = false;
+
+  static const _hideDelay = Duration(seconds: 3);
+
+  @override
+  void initState() {
+    super.initState();
+    _stateSub = ref
+        .read(audioHandlerProvider)
+        .playbackState
+        .listen(_onPlaybackState);
+  }
+
+  void _onPlaybackState(PlaybackState state) {
+    final completed = state.processingState == AudioProcessingState.completed;
+    if (completed) {
+      _hideTimer ??= Timer(_hideDelay, () {
+        if (mounted) setState(() => _hidden = true);
+      });
+    } else {
+      _hideTimer?.cancel();
+      _hideTimer = null;
+      if (_hidden && mounted) setState(() => _hidden = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _stateSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
     return StreamBuilder<MediaItem?>(
       stream: handler.mediaItem,
       builder: (context, mediaSnapshot) {
         final item = mediaSnapshot.data;
-        if (item == null) return const SizedBox.shrink();
+        if (item == null || _hidden) return const SizedBox.shrink();
         return StreamBuilder<PlaybackState>(
           stream: handler.playbackState,
           builder: (context, stateSnapshot) {

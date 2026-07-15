@@ -25,12 +25,12 @@ class FullPlayerScreen extends ConsumerWidget {
         builder: (context, mediaSnapshot) {
           final media = mediaSnapshot.data;
           if (media == null) {
-            return const Center(
-              child: Text(
-                'Sin reproducción',
-                style: TextStyle(color: Colors.white),
-              ),
-            );
+            // Sin pista (p. ej. terminó y se ocultó): se cierra el reproductor
+            // grande en vez de dejar una pantalla vacía.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) Navigator.of(context).maybePop();
+            });
+            return const ColoredBox(color: Colors.black);
           }
           final content = ref.watch(contentByIdProvider(media.id)).value;
           return Stack(
