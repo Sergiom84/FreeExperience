@@ -4,6 +4,10 @@ import 'package:image/image.dart' as img;
 
 import 'app_log.dart';
 
+/// Calidad JPEG de las portadas. 72 pesa ~30% menos que 82 sin pérdida
+/// perceptible, para que carguen antes desde Supabase Storage.
+const int _jpegQuality = 72;
+
 /// Encuadre normalizado (0..1) sobre la imagen origen: origen y tamaño
 /// relativos. Compartido por el recortador de UI y el repositorio de subida.
 class CropRect {
@@ -56,7 +60,7 @@ PreparedImage? prepareImage(
         : (framed.width >= framed.height
               ? img.copyResize(framed, width: maxDimension)
               : img.copyResize(framed, height: maxDimension));
-    return PreparedImage(img.encodeJpg(resized, quality: 82));
+    return PreparedImage(img.encodeJpg(resized, quality: _jpegQuality));
   } on Object catch (error, stackTrace) {
     reportError(error, stackTrace, context: 'prepareImage');
     return null;
@@ -91,7 +95,7 @@ PreparedImage? cropImageToNormalizedRect(
         : (cropped.width >= cropped.height
               ? img.copyResize(cropped, width: maxDimension)
               : img.copyResize(cropped, height: maxDimension));
-    return PreparedImage(img.encodeJpg(resized, quality: 82));
+    return PreparedImage(img.encodeJpg(resized, quality: _jpegQuality));
   } on Object catch (error, stackTrace) {
     reportError(error, stackTrace, context: 'cropImageToNormalizedRect');
     return null;

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../core/sync/sync_service.dart';
 import '../content/data/content_repository.dart';
@@ -70,7 +72,26 @@ class PlaybackCoordinator {
       ..add(item);
     _index = 0;
     _emitQueue();
+    _prefetchNextCover();
     await _loadAndPlay(item);
+  }
+
+  /// Precarga a caché la portada del siguiente elemento de la cola para que su
+  /// pantalla de detalle/reproductor abra ya con la imagen lista.
+  void _prefetchNextCover() {
+    final next = _index + 1;
+    if (next >= _queue.length) return;
+    final url = _queue[next].coverPath;
+    if (!url.startsWith('http')) return;
+    final stream = CachedNetworkImageProvider(
+      url,
+    ).resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (_, _) => stream.removeListener(listener),
+      onError: (_, _) => stream.removeListener(listener),
+    );
+    stream.addListener(listener);
   }
 
   /// Appends [item] to the queue. If nothing is playing, starts it.
@@ -81,12 +102,14 @@ class PlaybackCoordinator {
     }
     _queue.add(item);
     _emitQueue();
+    _prefetchNextCover();
   }
 
   Future<void> skipToNext() async {
     if (_index >= _queue.length - 1) return;
     _index++;
     _emitQueue();
+    _prefetchNextCover();
     await _loadAndPlay(_queue[_index]);
   }
 
@@ -98,6 +121,26 @@ class PlaybackCoordinator {
   }
 
   Future<void> _loadAndPlay(ContentItem item) async {
+    // Reintenta las partes de red (firmar URL + abrir la fuente) porque en
+    // móvil un fallo puntual dejaba un "No se pudo reproducir" definitivo.
+    Object? lastError;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        await _attemptLoadAndPlay(item);
+        return;
+      } on Object catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          await Future<void>.delayed(
+            Duration(milliseconds: 600 * (attempt + 1)),
+          );
+        }
+      }
+    }
+    throw lastError ?? StateError('Contenido no disponible');
+  }
+
+  Future<void> _attemptLoadAndPlay(ContentItem item) async {
     final uri = await _downloads.resolve(item);
     if (uri == null) throw StateError('Contenido no disponible');
     final progress = await _progress.get(item.id);

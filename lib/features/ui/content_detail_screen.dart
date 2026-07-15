@@ -144,9 +144,14 @@ class _AudioActions extends ConsumerWidget {
                           context: 'ContentDetail.play',
                         );
                         if (context.mounted) {
+                          final reason = error.toString();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No se pudo reproducir'),
+                            SnackBar(
+                              content: Text(
+                                'No se pudo reproducir: '
+                                '${reason.length > 120 ? '${reason.substring(0, 120)}…' : reason}',
+                              ),
+                              duration: const Duration(seconds: 5),
                             ),
                           );
                         }
