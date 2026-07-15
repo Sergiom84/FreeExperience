@@ -186,10 +186,14 @@ class _AudioActions extends ConsumerWidget {
                       ref.read(downloadManagerProvider).remove(item.id),
                   icon: const Icon(Icons.download_done),
                 ),
+                DownloadState.failed => IconButton.outlined(
+                  tooltip: 'Reintentar descarga',
+                  onPressed: () => _download(context, ref),
+                  icon: const Icon(Icons.error_outline),
+                ),
                 _ => IconButton.outlined(
                   tooltip: 'Descargar',
-                  onPressed: () =>
-                      ref.read(downloadManagerProvider).download(item),
+                  onPressed: () => _download(context, ref),
                   icon: const Icon(Icons.download_outlined),
                 ),
               },
@@ -211,6 +215,27 @@ class _AudioActions extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  /// Lanza la descarga e informa del motivo real si falla (antes el fallo
+  /// era mudo y el botón volvía al icono de descargar).
+  Future<void> _download(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(downloadManagerProvider).download(item);
+    } on Object catch (error) {
+      if (context.mounted) {
+        final reason = error.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se pudo descargar: '
+              '${reason.length > 120 ? '${reason.substring(0, 120)}…' : reason}',
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 }
 

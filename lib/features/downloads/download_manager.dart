@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/util/app_log.dart';
 import '../content/domain/content_item.dart';
 
 enum DownloadState { none, queued, downloading, downloaded, failed }
@@ -90,7 +91,10 @@ class LocalDownloadManager implements DownloadManager {
   @override
   Future<void> download(ContentItem item) async {
     final media = item.mediaPath;
-    if (media == null) return;
+    if (media == null) {
+      await _saveState(item.id, DownloadState.failed, errorCode: 'unavailable');
+      throw StateError('Contenido no disponible');
+    }
     if (media.startsWith('asset:')) {
       await _database.saveDownload(
         DownloadRecordsCompanion.insert(
@@ -104,11 +108,41 @@ class LocalDownloadManager implements DownloadManager {
     }
 
     await _saveState(item.id, DownloadState.queued);
-    final source = await resolve(item);
-    if (source == null) {
-      await _saveState(item.id, DownloadState.failed, errorCode: 'unavailable');
-      return;
+    final token = CancelToken();
+    _cancellations[item.id] = token;
+    try {
+      // Reintenta las partes de red (firmar URL + descarga), mismo patrón que
+      // la reproducción: un corte puntual no debe dejar la descarga en fallo
+      // definitivo.
+      for (var attempt = 0; ; attempt++) {
+        try {
+          await _attemptDownload(item, token);
+          return;
+        } on Object catch (error, stackTrace) {
+          if (token.isCancelled) return;
+          if (attempt < 2 && _isTransient(error)) {
+            await Future<void>.delayed(
+              Duration(milliseconds: 600 * (attempt + 1)),
+            );
+            continue;
+          }
+          reportError(error, stackTrace, context: 'DownloadManager.download');
+          await _saveState(
+            item.id,
+            DownloadState.failed,
+            errorCode: _errorCode(error),
+          );
+          rethrow;
+        }
+      }
+    } finally {
+      _cancellations.remove(item.id);
     }
+  }
+
+  Future<void> _attemptDownload(ContentItem item, CancelToken token) async {
+    final source = await resolve(item);
+    if (source == null) throw StateError('Contenido no disponible');
 
     final root = await getApplicationDocumentsDirectory();
     final directory = Directory(p.join(root.path, 'downloads'));
@@ -118,11 +152,9 @@ class LocalDownloadManager implements DownloadManager {
         : p.extension(source.path);
     final finalPath = p.join(directory.path, '${item.id}$extension');
     final temporaryPath = '$finalPath.part';
-    final token = CancelToken();
-    _cancellations[item.id] = token;
 
+    await _saveState(item.id, DownloadState.downloading);
     try {
-      await _saveState(item.id, DownloadState.downloading);
       await _dio.downloadUri(
         source,
         temporaryPath,
@@ -157,19 +189,34 @@ class LocalDownloadManager implements DownloadManager {
           updatedAt: DateTime.now().toUtc(),
         ),
       );
-    } on DioException catch (error) {
+    } on Object {
       await File(temporaryPath).delete().catchError((_) => File(temporaryPath));
-      await _saveState(
-        item.id,
-        DownloadState.failed,
-        errorCode: error.type.name,
-      );
-    } on FileSystemException {
-      await File(temporaryPath).delete().catchError((_) => File(temporaryPath));
-      await _saveState(item.id, DownloadState.failed, errorCode: 'storage');
-    } finally {
-      _cancellations.remove(item.id);
+      rethrow;
     }
+  }
+
+  /// Fallos de red puntuales que merecen reintento; el resto (cancelación,
+  /// respuesta 4xx, disco lleno...) fallan directamente.
+  bool _isTransient(Object error) {
+    if (error is SocketException) return true;
+    if (error is DioException) {
+      return switch (error.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.connectionError ||
+        DioExceptionType.unknown => true,
+        _ => false,
+      };
+    }
+    return false;
+  }
+
+  String _errorCode(Object error) {
+    if (error is DioException) return error.type.name;
+    if (error is FileSystemException) return 'storage';
+    if (error is StateError) return 'unavailable';
+    return 'unknown';
   }
 
   @override

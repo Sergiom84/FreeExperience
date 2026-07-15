@@ -22,14 +22,21 @@ class FullPlayerScreen extends ConsumerWidget {
       backgroundColor: Colors.black,
       body: StreamBuilder<MediaItem?>(
         stream: handler.mediaItem,
+        // Sin initialData el primer frame llega con data == null aunque haya
+        // pista sonando, y el auto-cierre de abajo cerraba la pantalla nada
+        // más abrirla.
+        initialData: handler.mediaItem.value,
         builder: (context, mediaSnapshot) {
           final media = mediaSnapshot.data;
           if (media == null) {
             // Sin pista (p. ej. terminó y se ocultó): se cierra el reproductor
-            // grande en vez de dejar una pantalla vacía.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.mounted) Navigator.of(context).maybePop();
-            });
+            // grande en vez de dejar una pantalla vacía. Solo cuando el stream
+            // ya emitió de verdad, no en el frame de espera inicial.
+            if (mediaSnapshot.connectionState != ConnectionState.waiting) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) Navigator.of(context).maybePop();
+              });
+            }
             return const ColoredBox(color: Colors.black);
           }
           final content = ref.watch(contentByIdProvider(media.id)).value;
