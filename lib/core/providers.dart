@@ -158,6 +158,12 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ProfileRepository(ref.watch(supabaseClientProvider)),
 );
 
+/// Si el usuario ya escuchó la locución de bienvenida. Decide si el portal
+/// muestra la salida a inicio (primera vez no hay salidas: la locución entera).
+final introSeenProvider = FutureProvider<bool>(
+  (ref) => ref.watch(introSeenStoreProvider).isSeen(),
+);
+
 final introSeenStoreProvider = Provider<IntroSeenStore>(
   (ref) => IntroSeenStore(ref.watch(profileRepositoryProvider)),
 );

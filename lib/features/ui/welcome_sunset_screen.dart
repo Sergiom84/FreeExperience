@@ -22,19 +22,6 @@ class WelcomeSunsetScreen extends ConsumerStatefulWidget {
       _WelcomeSunsetScreenState();
 }
 
-class _Section {
-  const _Section({required this.label, required this.route});
-  final String label;
-  final String route;
-}
-
-const _sections = <_Section>[
-  _Section(label: 'Meditar', route: '/meditar'),
-  _Section(label: 'Prácticas', route: '/practicas'),
-  _Section(label: 'Canalizaciones', route: '/canalizaciones'),
-  _Section(label: 'Inspiración', route: '/inspiracion'),
-];
-
 // Centro del sol como fracción de la pantalla.
 const double _sunFracX = 0.5;
 const double _sunFracY = 0.46;
@@ -358,32 +345,27 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
               SafeArea(
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            tooltip: 'Secciones',
-                            onPressed: () => _showSections(context),
-                            icon: const Icon(
-                              Icons.star_border,
-                              color: Colors.white,
+                    // Sin salidas para quien aún no escuchó la locución: la
+                    // primera visita se completa entera. Quien ya la escuchó
+                    // (vuelve desde la llave) tiene la vuelta a inicio.
+                    if (ref.watch(introSeenProvider).value ?? false)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            const Spacer(),
+                            IconButton(
+                              tooltip: 'Inicio',
+                              onPressed: _leaveToHome,
+                              icon: const Icon(
+                                Icons.home_outlined,
+                                color: Colors.white,
+                              ),
+                              iconSize: 24,
                             ),
-                            iconSize: 26,
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            tooltip: 'Perfil',
-                            onPressed: () => context.push('/profile'),
-                            icon: const Icon(
-                              Icons.person_outline,
-                              color: Colors.white,
-                            ),
-                            iconSize: 24,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 8),
                     const _Greeting(),
                   ],
@@ -396,32 +378,12 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     );
   }
 
-  Future<void> _showSections(BuildContext context) =>
-      showModalBottomSheet<void>(
-        context: context,
-        builder: (sheetContext) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 14, 12, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final section in _sections)
-                  ListTile(
-                    title: Text(
-                      section.label,
-                      style: Theme.of(sheetContext).textTheme.titleMedium,
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      context.go(section.route);
-                    },
-                  ),
-              ],
-            ),
-          ),
-        ),
-      );
+  /// Vuelta a inicio para quien ya escuchó la locución: corta el audio en el
+  /// acto para que no siga sonando fuera del portal.
+  void _leaveToHome() {
+    unawaited(ref.read(audioHandlerProvider).dismiss());
+    context.go('/meditar');
+  }
 }
 
 // ─── Greeting ────────────────────────────────────────────────────────────────

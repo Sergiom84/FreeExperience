@@ -36,14 +36,23 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
   Timer? _hideTimer;
 
   static const _hideDelay = Duration(seconds: 3);
+  static const _pauseHideDelay = Duration(seconds: 5);
 
-  void _scheduleHide() {
+  void _scheduleHide([Duration delay = _hideDelay]) {
     _hideTimer?.cancel();
-    _hideTimer = Timer(_hideDelay, () {
+    _hideTimer = Timer(delay, () {
       // Nada que sonar: se limpia la pista para que la UI oculte el player.
       mediaItem.add(null);
       unawaited(_player.stop());
     });
+  }
+
+  /// Corta la reproducción y oculta el reproductor al instante (p. ej. al
+  /// salir de la pantalla del portal con la locución sonando).
+  Future<void> dismiss() async {
+    _cancelHide();
+    mediaItem.add(null);
+    await _player.stop();
   }
 
   void _cancelHide() {
@@ -100,7 +109,13 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
   }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() {
+    // En pausa el reproductor también se oculta a los pocos segundos; volver
+    // a reproducir siempre empieza desde el principio, así que no se pierde
+    // nada al descargar la pista.
+    if (mediaItem.value != null) _scheduleHide(_pauseHideDelay);
+    return _player.pause();
+  }
 
   @override
   Future<void> setSpeed(double speed) => _player.setSpeed(speed);
@@ -113,6 +128,11 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
         : duration != null && position > duration
         ? duration
         : position;
+    // Interacción en pausa: se pospone el auto-ocultado mientras el usuario
+    // sigue moviéndose por la pista.
+    if (!_player.playing && _hideTimer != null) {
+      _scheduleHide(_pauseHideDelay);
+    }
     _pendingSeek = safePosition;
     return _player.seek(safePosition).whenComplete(() {
       if (_pendingSeek == safePosition) _pendingSeek = null;
