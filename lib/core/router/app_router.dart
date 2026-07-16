@@ -48,7 +48,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!isLinked && !onLogin && !onLegal) return '/login';
       // La primera pantalla (bienvenida vs meditar) la decide LoginScreen según
       // si ya se escuchó la introducción; aquí solo sacamos del login.
-      if (isLinked && onLogin) return '/meditar';
+      if (isLinked && onLogin) return '/canalizaciones';
       return null;
     },
     routes: [
@@ -68,21 +68,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state, navigationShell) =>
             _bg(AppShell(navigationShell: navigationShell)),
         branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/meditar',
-                builder: (context, state) =>
-                    const CatalogScreen(kind: ContentKind.meditation),
-              ),
-            ],
-          ),
+          // Canaliza ocupa el primer puesto: es la sección con la que se
+          // abre la app (decisión 2026-07-16, revisable).
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/canalizaciones',
                 builder: (context, state) =>
                     const CatalogScreen(kind: ContentKind.channeling),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/meditar',
+                builder: (context, state) =>
+                    const CatalogScreen(kind: ContentKind.meditation),
               ),
             ],
           ),

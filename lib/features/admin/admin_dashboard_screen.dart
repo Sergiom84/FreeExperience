@@ -71,7 +71,7 @@ class AdminDashboard extends ConsumerWidget {
             onPressed: () async {
               await ref.read(adminAuthProvider).signOut();
               ref.invalidate(isAdminProvider);
-              if (context.mounted) context.go('/meditar');
+              if (context.mounted) context.go('/canalizaciones');
             },
           ),
         ],

@@ -122,6 +122,8 @@ class _AudioActions extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Dos filas de dos botones alineados: reproducir/continuar arriba,
+        // cola/descarga abajo.
         Row(
           children: [
             Expanded(
@@ -130,32 +132,12 @@ class _AudioActions extends ConsumerWidget {
                 builder: (context, snapshot) {
                   final isCurrent = snapshot.data?.id == item.id;
                   return FilledButton.icon(
-                    onPressed: () async {
+                    onPressed: () {
                       if (isCurrent) {
                         context.push('/player');
                         return;
                       }
-                      try {
-                        await ref.read(playbackCoordinatorProvider).play(item);
-                      } on Object catch (error, stackTrace) {
-                        reportError(
-                          error,
-                          stackTrace,
-                          context: 'ContentDetail.play',
-                        );
-                        if (context.mounted) {
-                          final reason = error.toString();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'No se pudo reproducir: '
-                                '${reason.length > 120 ? '${reason.substring(0, 120)}…' : reason}',
-                              ),
-                              duration: const Duration(seconds: 5),
-                            ),
-                          );
-                        }
-                      }
+                      _play(context, ref);
                     },
                     icon: Icon(
                       isCurrent ? Icons.keyboard_arrow_up : Icons.play_arrow,
@@ -166,55 +148,96 @@ class _AudioActions extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 12),
-            SizedBox(
-              width: 52,
-              height: 48,
+            // Retoma desde donde se dejó, para quien tuvo que parar a medias.
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _play(context, ref, resume: true),
+                icon: const Icon(Icons.play_circle_outline),
+                label: const Text('Continuar'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await ref.read(playbackCoordinatorProvider).addToQueue(item);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Añadido a la cola')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.playlist_add),
+                label: const Text('Añadir a la cola'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
               child: switch (download.state) {
-                DownloadState.queued || DownloadState.downloading => Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
+                DownloadState.queued ||
+                DownloadState.downloading => OutlinedButton.icon(
+                  onPressed: null,
+                  icon: SizedBox(
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator.adaptive(
                       value: download.progress,
                       strokeWidth: 2,
                     ),
                   ),
+                  label: const Text('Descargando'),
                 ),
-                DownloadState.downloaded => IconButton.outlined(
-                  tooltip: 'Eliminar descarga',
+                DownloadState.downloaded => OutlinedButton.icon(
                   onPressed: () =>
                       ref.read(downloadManagerProvider).remove(item.id),
                   icon: const Icon(Icons.download_done),
+                  label: const Text('Descargada'),
                 ),
-                DownloadState.failed => IconButton.outlined(
-                  tooltip: 'Reintentar descarga',
+                DownloadState.failed => OutlinedButton.icon(
                   onPressed: () => _download(context, ref),
                   icon: const Icon(Icons.error_outline),
+                  label: const Text('Reintentar'),
                 ),
-                _ => IconButton.outlined(
-                  tooltip: 'Descargar',
+                _ => OutlinedButton.icon(
                   onPressed: () => _download(context, ref),
                   icon: const Icon(Icons.download_outlined),
+                  label: const Text('Descargar'),
                 ),
               },
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () async {
-            await ref.read(playbackCoordinatorProvider).addToQueue(item);
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Añadido a la cola')),
-              );
-            }
-          },
-          icon: const Icon(Icons.playlist_add),
-          label: const Text('Añadir a la cola'),
-        ),
       ],
     );
+  }
+
+  /// Reproduce el audio; con [resume] retoma desde la posición guardada.
+  Future<void> _play(
+    BuildContext context,
+    WidgetRef ref, {
+    bool resume = false,
+  }) async {
+    try {
+      await ref.read(playbackCoordinatorProvider).play(item, resume: resume);
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'ContentDetail.play');
+      if (context.mounted) {
+        final reason = error.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No se pudo reproducir: '
+              '${reason.length > 120 ? '${reason.substring(0, 120)}…' : reason}',
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   /// Lanza la descarga e informa del motivo real si falla (antes el fallo

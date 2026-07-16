@@ -56,7 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _navigated = true;
     final seen = await ref.read(introSeenStoreProvider).isSeen();
     if (!mounted) return;
-    context.go(seen ? '/meditar' : '/bienvenida');
+    context.go(seen ? '/canalizaciones' : '/bienvenida');
   }
 
   Future<void> _submit() async {

@@ -66,14 +66,17 @@ class PlaybackCoordinator {
   }
 
   /// Starts a fresh queue with [item] as the only entry.
-  Future<void> play(ContentItem item) async {
+  ///
+  /// Con [resume] retoma desde la posición guardada (botón "Continuar");
+  /// sin él siempre empieza desde el principio.
+  Future<void> play(ContentItem item, {bool resume = false}) async {
     _queue
       ..clear()
       ..add(item);
     _index = 0;
     _emitQueue();
     _prefetchNextCover();
-    await _loadAndPlay(item);
+    await _loadAndPlay(item, resume: resume);
   }
 
   /// Precarga a caché la portada del siguiente elemento de la cola para que su
@@ -120,13 +123,13 @@ class PlaybackCoordinator {
     await _loadAndPlay(_queue[_index]);
   }
 
-  Future<void> _loadAndPlay(ContentItem item) async {
+  Future<void> _loadAndPlay(ContentItem item, {bool resume = false}) async {
     // Reintenta las partes de red (firmar URL + abrir la fuente) porque en
     // móvil un fallo puntual dejaba un "No se pudo reproducir" definitivo.
     Object? lastError;
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
-        await _attemptLoadAndPlay(item);
+        await _attemptLoadAndPlay(item, resume: resume);
         return;
       } on Object catch (error) {
         lastError = error;
@@ -140,7 +143,10 @@ class PlaybackCoordinator {
     throw lastError ?? StateError('Contenido no disponible');
   }
 
-  Future<void> _attemptLoadAndPlay(ContentItem item) async {
+  Future<void> _attemptLoadAndPlay(
+    ContentItem item, {
+    bool resume = false,
+  }) async {
     final uri = await _downloads.resolve(item);
     if (uri == null) throw StateError('Contenido no disponible');
     final artUri = item.coverPath.startsWith('http')
@@ -157,8 +163,16 @@ class PlaybackCoordinator {
       ),
       uri,
     );
-    // Los audios son cortos: siempre se empieza desde el principio. El
-    // progreso guardado se conserva solo para marcar lo ya escuchado.
+    // Por defecto siempre se empieza desde el principio (audios cortos); el
+    // botón "Continuar" pide retomar la posición guardada explícitamente.
+    if (resume) {
+      final progress = await _progress.get(item.id);
+      if (progress != null &&
+          progress.positionSeconds > 0 &&
+          !progress.completed) {
+        await _handler.seek(Duration(seconds: progress.positionSeconds));
+      }
+    }
     await _handler.play();
     _startProgressTimer();
   }

@@ -33,12 +33,12 @@ class AppShell extends StatelessWidget {
               ),
               destinations: const [
                 NavigationDestination(
-                  icon: _NavImageIcon('assets/icons/nav/medita.png'),
-                  label: 'Medita',
-                ),
-                NavigationDestination(
                   icon: _NavImageIcon('assets/icons/nav/canaliza.png'),
                   label: 'Canaliza',
+                ),
+                NavigationDestination(
+                  icon: _NavImageIcon('assets/icons/nav/medita.png'),
+                  label: 'Medita',
                 ),
                 NavigationDestination(
                   icon: _NavImageIcon('assets/icons/nav/duerme.png'),
