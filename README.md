@@ -1,4 +1,4 @@
-# Free Experience
+# SoulKey
 
 Aplicación móvil editorial de meditación, prácticas, canalizaciones e inspiración. Flutter comparte la base de código entre iOS y Android; la primera beta se valida en iPhone.
 

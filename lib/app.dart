@@ -14,7 +14,7 @@ class FreeExperienceApp extends ConsumerWidget {
     ref.watch(appBootstrapProvider);
     ref.watch(contentAutoRefreshProvider);
     return MaterialApp.router(
-      title: 'Free Experience',
+      title: 'SoulKey',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.forDirection(direction),
       routerConfig: ref.watch(appRouterProvider),

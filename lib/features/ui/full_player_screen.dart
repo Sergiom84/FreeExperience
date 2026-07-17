@@ -124,7 +124,7 @@ class _TopBar extends StatelessWidget {
     final reference = [
       media.title,
       if (artist != null && artist.isNotEmpty) artist,
-      'Free Experience',
+      'SoulKey',
     ].join(' — ');
     await Clipboard.setData(ClipboardData(text: reference));
     messenger.showSnackBar(const SnackBar(content: Text('Copiado')));

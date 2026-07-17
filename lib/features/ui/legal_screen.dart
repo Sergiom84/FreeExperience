@@ -11,7 +11,7 @@ extension LegalDocumentCopy on LegalDocument {
 
   List<String> get paragraphs => switch (this) {
     LegalDocument.privacy => const [
-      'Free Experience conserva el progreso, los favoritos y las descargas necesarios para prestar el servicio.',
+      'SoulKey conserva el progreso, los favoritos y las descargas necesarios para prestar el servicio.',
       'Los diagnósticos técnicos excluyen grabaciones de sesión y datos personales por defecto.',
       'La eliminación de cuenta borra los datos asociados en remoto y en el dispositivo.',
     ],

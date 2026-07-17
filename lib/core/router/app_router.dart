@@ -46,9 +46,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final onLegal = state.matchedLocation.startsWith('/legal/');
 
       if (!isLinked && !onLogin && !onLegal) return '/login';
-      // La primera pantalla (bienvenida vs meditar) la decide LoginScreen según
-      // si ya se escuchó la introducción; aquí solo sacamos del login.
-      if (isLinked && onLogin) return '/canalizaciones';
+      // La primera pantalla (bienvenida vs canalizaciones) la decide
+      // LoginScreen de forma async según si ya se escuchó la introducción
+      // (`_goAfterAuth`/`introSeenStoreProvider`). Un redirect síncrono aquí
+      // ganaba siempre esa carrera y producía un parpadeo
+      // catálogo→bienvenida; el login ya se encarga de salir por su cuenta.
       return null;
     },
     routes: [

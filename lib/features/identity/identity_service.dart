@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Esquema declarado en el intent-filter de `AndroidManifest.xml` y en el
+/// deep link de iOS: reabre la app tras confirmar email o vincular Apple, en
+/// vez de dejar al usuario en el navegador.
+const _authCallbackUrl = 'com.freeexperience.free-experience://auth-callback';
+
 enum IdentityStatus { offlineGuest, anonymous, linked }
 
 /// Causas de fallo de autenticación que la interfaz distingue. Sustituye el
@@ -107,7 +112,11 @@ class SupabaseIdentityService implements IdentityService {
       if (client.auth.currentSession != null) {
         await client.auth.signOut(scope: SignOutScope.local);
       }
-      await client.auth.signUp(email: email.trim(), password: password);
+      await client.auth.signUp(
+        email: email.trim(),
+        password: password,
+        emailRedirectTo: _authCallbackUrl,
+      );
     } on AuthException catch (error) {
       throw IdentityException(_mapAuthError(error));
     }
@@ -147,7 +156,7 @@ class SupabaseIdentityService implements IdentityService {
     if (client == null) throw StateError('Supabase no está configurado');
     final response = await client.auth.getLinkIdentityUrl(
       OAuthProvider.apple,
-      redirectTo: 'com.freeexperience.app://auth-callback',
+      redirectTo: _authCallbackUrl,
     );
     final opened = await launchUrl(
       Uri.parse(response.url),

@@ -111,7 +111,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Free Experience',
+                    'SoulKey',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),

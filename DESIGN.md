@@ -1,4 +1,4 @@
-# Design System — Free Experience
+# Design System — SoulKey
 
 ## Product Context
 

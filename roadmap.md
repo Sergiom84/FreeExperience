@@ -1,8 +1,8 @@
-# Free Experience — Roadmap
+# SoulKey — Roadmap
 
 ## Visión
 
-Free Experience es una aplicación móvil editorial de meditación, prácticas, canalizaciones e inspiración. La primera beta se valida en iPhone y comparte código con Android mediante Flutter.
+SoulKey es una aplicación móvil editorial de meditación, prácticas, canalizaciones e inspiración. La primera beta se valida en iPhone y comparte código con Android mediante Flutter.
 
 La experiencia debe sentirse serena, íntima y elegante: acceso inmediato, audio fiable, navegación directa, cero gamificación, cero emojis y ningún texto tutorial que explique lo evidente.
 

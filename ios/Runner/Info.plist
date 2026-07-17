@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Free Experience</string>
+	<string>SoulKey</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -40,9 +40,9 @@
 		<string>_http._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Free Experience necesita acceso a la red local para detectar la conectividad.</string>
+	<string>SoulKey necesita acceso a la red local para detectar la conectividad.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Free Experience necesita acceso a tus fotos para elegir la portada del contenido.</string>
+	<string>SoulKey necesita acceso a tus fotos para elegir la portada del contenido.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
