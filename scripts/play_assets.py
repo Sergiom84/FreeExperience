@@ -67,8 +67,7 @@ draw = ImageDraw.Draw(feat)
 title_font = ImageFont.truetype(GEORGIA_B, 92)
 sub_font = ImageFont.truetype(GEORGIA, 34)
 tx = 470
-draw.text((tx, 180), "Free", font=title_font, fill=(247, 240, 230))
-draw.text((tx, 270), "Experience", font=title_font, fill=(247, 240, 230))
+draw.text((tx, 220), "SoulKey", font=title_font, fill=(247, 240, 230))
 feat.save(os.path.join(OUT, "feature_1024x500.png"))
 print("feature_1024x500.png OK")
 
