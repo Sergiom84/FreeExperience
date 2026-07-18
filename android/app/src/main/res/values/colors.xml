@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo del splash nativo; coincide con las esquinas de assets/icon/icon.png
+         y con adaptive_icon_background en flutter_launcher_icons.yaml. -->
+    <color name="splash_background">#050B14</color>
+	<color name="ic_launcher_background">#050B14</color>
+</resources>

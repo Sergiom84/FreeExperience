@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ (API 31) impone su propio splash: icono pequeño sobre un
+         fondo solido, sin permitir imagen a pantalla completa. Sin esto usa
+         @android:color/background_light (blanco) por defecto, dejando el
+         mismo salto brusco que en versiones anteriores. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+    </style>
+</resources>
