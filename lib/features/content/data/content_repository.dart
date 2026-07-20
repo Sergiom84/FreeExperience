@@ -73,6 +73,12 @@ class DriftContentRepository implements ContentRepository {
   Future<void> refresh() async {
     final remote = _remote;
     if (remote == null) return;
+    // Registro obligatorio: el rol anon no tiene grant sobre content_items, así
+    // que sin sesión la consulta siempre fallaría con "permission denied"
+    // (42501). Se evita en cada arranque deslogueado; el catálogo local
+    // (semilla) sigue disponible y contentAutoRefreshProvider vuelve a
+    // refrescar en cuanto la sesión pasa a linked.
+    if (remote.auth.currentSession == null) return;
     try {
       final rows = await remote
           .from('content_items')
@@ -84,6 +90,14 @@ class DriftContentRepository implements ContentRepository {
           .map((row) => _fromRemote(Map<String, dynamic>.from(row)))
           .toList();
       await _database.replacePublishedFromRemote(items.map(_toCompanion));
+    } on PostgrestException catch (error, stackTrace) {
+      // 42501 = permiso denegado: la sesión pudo caducar o degradarse a anon
+      // entre la comprobación anterior y la consulta. Es esperado y no un fallo
+      // reportable; se sigue con el catálogo local.
+      if (error.code != '42501') {
+        reportError(error, stackTrace, context: 'ContentRepository.refresh');
+      }
+      return;
     } on Object catch (error, stackTrace) {
       // Sin red se sigue sirviendo el catálogo local.
       reportError(error, stackTrace, context: 'ContentRepository.refresh');

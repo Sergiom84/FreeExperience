@@ -97,8 +97,18 @@ class FreeExperienceAudioHandler extends BaseAudioHandler
     } else {
       // Stream remoto: cachea progresivamente a disco mientras reproduce para
       // evitar cortes/rebuffer en redes inestables (móvil).
-      // ignore: experimental_member_use
-      await _player.setAudioSource(LockCachingAudioSource(uri, tag: item));
+      try {
+        // ignore: experimental_member_use
+        await _player.setAudioSource(LockCachingAudioSource(uri, tag: item));
+      } on Object {
+        // La fuente cacheada usa un proxy HTTP local; en la primera carga en
+        // frío (p. ej. la locución de bienvenida, primera reproducción de la
+        // app) y en algunos dispositivos falla con "(0) Source error" antes de
+        // que el proxy esté listo. Se reintenta con una fuente progresiva
+        // simple, que ExoPlayer/AVPlayer resuelven de forma más robusta aunque
+        // sin caché a disco.
+        await _player.setAudioSource(AudioSource.uri(uri, tag: item));
+      }
     }
   }
 
