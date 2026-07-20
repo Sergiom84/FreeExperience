@@ -157,6 +157,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     // después de dispose lanza una excepción).
     final contentRepository = ref.read(contentRepositoryProvider);
     final coordinator = ref.read(playbackCoordinatorProvider);
+    final downloads = ref.read(downloadManagerProvider);
     final introSeen = ref.read(introSeenStoreProvider);
 
     ContentItem? intro;
@@ -191,6 +192,18 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
         );
       }
       return;
+    }
+
+    // La locución es el primer audio de la app: en algunos Android la primera
+    // carga en frío de una fuente de streaming falla con "(0) Source error"
+    // (el proxy de caché de just_audio aún no está listo). Se descarga antes a
+    // un fichero local para reproducir desde disco, la ruta más robusta. Es
+    // best-effort: si la descarga falla, se reproduce por streaming igual y el
+    // handler ya reintenta con una fuente progresiva.
+    try {
+      await downloads.download(intro);
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'WelcomeSunset.cacheIntro');
     }
 
     try {
