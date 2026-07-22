@@ -57,6 +57,9 @@ dependencies:
   shared_preferences: ^2.5.5
   path: ^1.9.1
   image: ^4.9.1
+  # Descompresión del diccionario ortográfico del panel de administración
+  # (assets/dict/es_words.txt.gz). Puro Dart: funciona también en web.
+  archive: ^4.0.7
   web: ^1.1.1
   file_picker: ^8.1.0
 
@@ -86,6 +89,7 @@ flutter:
     - assets/audio/
     - assets/images/
     - assets/icons/nav/
+    - assets/dict/
   shaders:
     - shaders/ocean.frag
 

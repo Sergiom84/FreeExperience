@@ -9,8 +9,11 @@ import '../../features/admin/admin_wizard_screen.dart';
 import '../../features/content/domain/content_item.dart';
 import '../../features/identity/identity_service.dart';
 import '../../features/identity/login_screen.dart';
+import '../../features/ui/about_me_screen.dart';
 import '../../features/ui/app_shell.dart';
 import '../../features/ui/catalog_screen.dart';
+import '../../features/ui/home_screen.dart';
+import '../../features/ui/search_screen.dart';
 import '../../features/ui/content_detail_screen.dart';
 import '../../features/ui/favorites_screen.dart';
 import '../../features/ui/full_player_screen.dart';
@@ -65,6 +68,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/bienvenida-orbita',
         builder: (context, state) => _bg(const WelcomeScreen()),
+      ),
+      // Home intermedio: esfera con las cuatro llaves. Es la primera pantalla
+      // tras la bienvenida y para quien ya escuchó la introducción.
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => _bg(const HomeScreen()),
+      ),
+      GoRoute(
+        path: '/buscar',
+        builder: (context, state) => _bg(const SearchScreen()),
+      ),
+      GoRoute(
+        path: '/quien-soy',
+        builder: (context, state) => _bg(const AboutMeScreen()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

@@ -150,7 +150,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
     setState(() => _introLoading = true);
     // Reproduce el último audio publicado en Extras > Introducción (si existe).
     // just_audio completa play() al terminar, y entonces se marca como vista y
-    // se entra a Meditaciones.
+    // se entra al Home de llaves.
     //
     // Las dependencias se capturan antes del primer await: la reproducción
     // dura minutos y la pantalla puede desmontarse entre medias (usar ref
@@ -246,7 +246,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
       }
       return;
     }
-    if (mounted) context.go('/canalizaciones');
+    if (mounted) context.go('/home');
   }
 
   @override
@@ -395,7 +395,7 @@ class _WelcomeSunsetScreenState extends ConsumerState<WelcomeSunsetScreen>
   /// acto para que no siga sonando fuera del portal.
   void _leaveToHome() {
     unawaited(ref.read(audioHandlerProvider).dismiss());
-    context.go('/canalizaciones');
+    context.go('/home');
   }
 }
 

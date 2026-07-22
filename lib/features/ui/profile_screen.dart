@@ -254,6 +254,12 @@ class _InformationSection extends StatelessWidget {
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
+          title: const Text('Quien Soy'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/quien-soy'),
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
           title: const Text('Privacidad'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push('/legal/privacy'),

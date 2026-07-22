@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers.dart';
 
 class ScreenHeader extends ConsumerWidget {
-  const ScreenHeader({required this.title, this.subtitle, super.key});
+  const ScreenHeader({this.title, this.subtitle, super.key});
 
-  final String title;
+  final String? title;
   final String? subtitle;
 
   @override
@@ -23,7 +23,7 @@ class ScreenHeader extends ConsumerWidget {
               IconButton(
                 tooltip: 'Inicio',
                 visualDensity: VisualDensity.compact,
-                onPressed: () => context.go('/bienvenida'),
+                onPressed: () => context.go('/home'),
                 icon: const Image(
                   image: AssetImage('assets/icons/nav/llave.png'),
                   width: 44,
@@ -49,6 +49,11 @@ class ScreenHeader extends ConsumerWidget {
               ),
               const SizedBox(width: 4),
               IconButton(
+                tooltip: 'Buscar',
+                onPressed: () => context.push('/buscar'),
+                icon: const Icon(Icons.search),
+              ),
+              IconButton(
                 tooltip: 'Guardados',
                 onPressed: () => context.push('/favorites'),
                 icon: const Icon(Icons.bookmark_border),
@@ -57,18 +62,20 @@ class ScreenHeader extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        Text(title, style: Theme.of(context).textTheme.displayMedium),
-        if (subtitle != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            subtitle!,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+        if (title != null) ...[
+          const SizedBox(height: 20),
+          Text(title!, style: Theme.of(context).textTheme.displayMedium),
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle!,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
+          ],
+          const SizedBox(height: 22),
         ],
-        const SizedBox(height: 22),
       ],
     );
   }

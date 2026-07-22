@@ -50,13 +50,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  /// Primera vez (intro no escuchada) → bienvenida; si ya escuchada → meditar.
+  /// Primera vez (intro no escuchada) → bienvenida; si ya escuchada → Home.
   Future<void> _goAfterAuth() async {
     if (_navigated) return;
     _navigated = true;
     final seen = await ref.read(introSeenStoreProvider).isSeen();
     if (!mounted) return;
-    context.go(seen ? '/canalizaciones' : '/bienvenida');
+    context.go(seen ? '/home' : '/bienvenida');
   }
 
   Future<void> _submit() async {

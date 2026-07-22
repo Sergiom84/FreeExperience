@@ -27,9 +27,11 @@ class InspirationScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TabBar(
+                // Recomendaciones primero: es la pestaña con la que se abre
+                // la sección (decisión 2026-07-22).
                 tabs: const [
-                  Tab(text: 'Vídeos'),
                   Tab(text: 'Recomendaciones'),
+                  Tab(text: 'Vídeos'),
                 ],
                 dividerColor: Theme.of(context).dividerColor,
                 indicatorColor: Theme.of(context).colorScheme.primary,
@@ -43,8 +45,8 @@ class InspirationScreen extends ConsumerWidget {
             Expanded(
               child: TabBarView(
                 children: [
-                  _InspirationCollection(kind: ContentKind.video),
                   _InspirationCollection(kind: ContentKind.recommendation),
+                  _InspirationCollection(kind: ContentKind.video),
                 ],
               ),
             ),

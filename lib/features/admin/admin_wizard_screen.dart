@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/util/app_log.dart';
 import '../../core/util/image_prep.dart';
+import '../../core/util/spell_checker.dart';
 import '../content/domain/content_item.dart';
 import 'admin_content_repository.dart';
 import 'admin_media_player.dart';
@@ -199,6 +200,40 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
     }
   }
 
+  /// Revisión ortográfica previa a publicar. Si hay palabras desconocidas se
+  /// muestran subrayadas y se pide confirmación; el aviso nunca bloquea la
+  /// publicación. Si el diccionario no puede cargarse, se publica sin revisar.
+  Future<void> _publishWithSpellCheck() async {
+    if (_busy) return;
+    Map<String, List<SpellIssue>> issues = const {};
+    try {
+      setState(() => _busy = true);
+      final checker = await SpellChecker.load();
+      issues = {
+        for (final entry in {
+          'Título': _title.text,
+          'Texto': _body.text,
+        }.entries)
+          if (checker.check(entry.value).isNotEmpty)
+            entry.key: checker.check(entry.value),
+      };
+    } on Object catch (error, stackTrace) {
+      reportError(error, stackTrace, context: 'AdminWizard.spellCheck');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+    if (issues.isEmpty) return _submit(publish: true);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => _SpellWarningDialog(
+        fields: {'Título': _title.text, 'Texto': _body.text},
+        issues: issues,
+      ),
+    );
+    if (confirmed == true && mounted) await _submit(publish: true);
+  }
+
   void _next() {
     if (_index < _steps.length - 1) setState(() => _index++);
   }
@@ -284,9 +319,7 @@ class _AdminWizardScreenState extends ConsumerState<AdminWizardScreen> {
       const SizedBox(width: 12),
       Expanded(
         child: FilledButton(
-          onPressed: _busy || !_canPublish
-              ? null
-              : () => _submit(publish: true),
+          onPressed: _busy || !_canPublish ? null : _publishWithSpellCheck,
           child: _busy
               ? const SizedBox(
                   height: 18,
@@ -683,5 +716,96 @@ class _PreviewStep extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Aviso de ortografía al publicar
+// ---------------------------------------------------------------------------
+
+class _SpellWarningDialog extends StatelessWidget {
+  const _SpellWarningDialog({required this.fields, required this.issues});
+
+  /// Texto completo de cada campo revisado, por etiqueta.
+  final Map<String, String> fields;
+
+  /// Palabras desconocidas por campo. Solo aparecen los campos con avisos.
+  final Map<String, List<SpellIssue>> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Faltas ortográficas'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Hay faltas ortográficas, ¿seguro que lo quieres lanzar?'),
+            for (final entry in issues.entries) ...[
+              const SizedBox(height: 16),
+              Text(
+                entry.key,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _UnderlinedText(
+                text: fields[entry.key] ?? '',
+                issues: entry.value,
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Revisar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Publicar igualmente'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Muestra el texto original con las palabras dudosas subrayadas en ondulado.
+class _UnderlinedText extends StatelessWidget {
+  const _UnderlinedText({required this.text, required this.issues});
+
+  final String text;
+  final List<SpellIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context).textTheme.bodyMedium;
+    final error = Theme.of(context).colorScheme.error;
+    final spans = <TextSpan>[];
+    var cursor = 0;
+    for (final issue in issues) {
+      if (issue.start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, issue.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: text.substring(issue.start, issue.end),
+          style: TextStyle(
+            decoration: TextDecoration.underline,
+            decorationStyle: TextDecorationStyle.wavy,
+            decorationColor: error,
+            color: error,
+          ),
+        ),
+      );
+      cursor = issue.end;
+    }
+    if (cursor < text.length) {
+      spans.add(TextSpan(text: text.substring(cursor)));
+    }
+    return Text.rich(TextSpan(style: base, children: spans));
   }
 }

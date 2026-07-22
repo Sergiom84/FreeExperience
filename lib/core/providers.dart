@@ -127,6 +127,12 @@ final contentByIdProvider = StreamProvider.family<ContentItem?, String>(
   (ref, id) => ref.watch(contentRepositoryProvider).watchById(id),
 );
 
+/// Todo el contenido publicado, sin filtrar por sección. Alimenta la búsqueda
+/// global de la cabecera.
+final allPublishedContentProvider = StreamProvider<List<ContentItem>>(
+  (ref) => ref.watch(contentRepositoryProvider).watchPublished(),
+);
+
 final favoriteContentProvider = StreamProvider<List<ContentItem>>(
   (ref) => ref.watch(contentRepositoryProvider).watchFavorites(),
 );
@@ -186,7 +192,8 @@ class DesignDirectionController extends Notifier<DesignDirection> {
   @override
   DesignDirection build() {
     _restore();
-    return DesignDirection.umbral;
+    // Materia quieta es la dirección predeterminada (decisión 2026-07-22).
+    return DesignDirection.materia;
   }
 
   Future<void> select(DesignDirection direction) async {
@@ -201,7 +208,7 @@ class DesignDirectionController extends Notifier<DesignDirection> {
     if (saved == null) return;
     state = DesignDirection.values.firstWhere(
       (direction) => direction.name == saved,
-      orElse: () => DesignDirection.umbral,
+      orElse: () => DesignDirection.materia,
     );
   }
 }
