@@ -216,10 +216,7 @@ class _KeyButton extends StatelessWidget {
                 ),
               ),
               child: ClipOval(
-                child: Image(
-                  image: AssetImage(item.asset),
-                  fit: BoxFit.cover,
-                ),
+                child: Image(image: AssetImage(item.asset), fit: BoxFit.cover),
               ),
             ),
             const SizedBox(height: 6),

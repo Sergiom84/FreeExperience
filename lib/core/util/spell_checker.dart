@@ -78,7 +78,11 @@ class SpellChecker {
 }
 
 class SpellIssue {
-  const SpellIssue({required this.word, required this.start, required this.end});
+  const SpellIssue({
+    required this.word,
+    required this.start,
+    required this.end,
+  });
 
   final String word;
   final int start;

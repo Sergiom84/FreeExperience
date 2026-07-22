@@ -82,8 +82,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
             itemCount: results.length,
-            itemBuilder: (context, index) =>
-                _ResultRow(item: results[index]),
+            itemBuilder: (context, index) => _ResultRow(item: results[index]),
           );
         },
       ),

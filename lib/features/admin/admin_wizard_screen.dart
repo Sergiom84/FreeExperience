@@ -741,14 +741,16 @@ class _SpellWarningDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Hay faltas ortográficas, ¿seguro que lo quieres lanzar?'),
+            const Text(
+              'Hay faltas ortográficas, ¿seguro que lo quieres lanzar?',
+            ),
             for (final entry in issues.entries) ...[
               const SizedBox(height: 16),
               Text(
                 entry.key,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               _UnderlinedText(
