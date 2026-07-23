@@ -154,10 +154,10 @@ class _Sphere extends StatelessWidget {
             // Frase central rotatoria.
             Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: side * 0.24,
-                  vertical: side * 0.24,
-                ),
+                // Margen amplio y simétrico: dentro de este hueco cabe la
+                // frase sin invadir nunca la zona de las llaves (alineadas a
+                // ±0.86 del radio), ni en horizontal ni en vertical.
+                padding: EdgeInsets.all(side * 0.28),
                 child: AnimatedSwitcher(
                   duration: reduceMotion
                       ? Duration.zero
@@ -165,12 +165,13 @@ class _Sphere extends StatelessWidget {
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeOutCubic,
                   // La frase se escala hacia abajo para caber siempre en el
-                  // hueco central de la esfera sin desbordar.
+                  // hueco central de la esfera sin desbordar ni solaparse
+                  // con las llaves.
                   child: FittedBox(
                     key: ValueKey(phrase),
                     fit: BoxFit.scaleDown,
                     child: SizedBox(
-                      width: side * 0.52,
+                      width: side * 0.44,
                       child: Text(
                         phrase,
                         textAlign: TextAlign.center,

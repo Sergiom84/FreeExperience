@@ -115,11 +115,14 @@ class _MonthGroup {
   const _MonthGroup({
     required this.key,
     required this.label,
+    required this.monthName,
     required this.items,
   });
 
   final String key;
   final String label;
+  // Mes sin año, para el chip del selector (p. ej. "Julio").
+  final String monthName;
   final List<ContentItem> items;
 }
 
@@ -153,15 +156,15 @@ List<_MonthGroup> _groupByMonth(List<ContentItem> items) {
     }
     byMonth[key]!.add(item);
   }
-  return order
-      .map(
-        (key) => _MonthGroup(
-          key: key,
-          label: formatMonthYear(byMonth[key]!.first.publishedAt),
-          items: byMonth[key]!,
-        ),
-      )
-      .toList();
+  return order.map((key) {
+    final label = formatMonthYear(byMonth[key]!.first.publishedAt);
+    return _MonthGroup(
+      key: key,
+      label: label,
+      monthName: label.split(' ').first,
+      items: byMonth[key]!,
+    );
+  }).toList();
 }
 
 /// Agrupa un mes por día calendario, conservando el orden de entrada.
@@ -223,10 +226,10 @@ class _AudioCalendarState extends ConsumerState<_AudioCalendar> {
       children: [
         _MonthJumper(
           months: months,
-          listenedById: listenedById,
           selectedIndex: monthIndex,
           onSelect: (i) => setState(() => _monthIndex = i),
         ),
+        const SizedBox(height: 18),
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
           child: DecoratedBox(
@@ -265,9 +268,7 @@ class _AudioCalendarState extends ConsumerState<_AudioCalendar> {
             listenedById: listenedById,
             expandedOverride: _dayExpandOverride[day.dateKey],
             onToggle: () => setState(() {
-              final current =
-                  _dayExpandOverride[day.dateKey] ??
-                  day.items.any((item) => !(listenedById[item.id] ?? false));
+              final current = _dayExpandOverride[day.dateKey] ?? false;
               _dayExpandOverride[day.dateKey] = !current;
             }),
           ),
@@ -279,13 +280,11 @@ class _AudioCalendarState extends ConsumerState<_AudioCalendar> {
 class _MonthJumper extends StatelessWidget {
   const _MonthJumper({
     required this.months,
-    required this.listenedById,
     required this.selectedIndex,
     required this.onSelect,
   });
 
   final List<_MonthGroup> months;
-  final Map<String, bool> listenedById;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
@@ -301,9 +300,6 @@ class _MonthJumper extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final group = months[i];
-          final unread = group.items
-              .where((item) => !(listenedById[item.id] ?? false))
-              .length;
           final active = i == selectedIndex;
           return Semantics(
             button: true,
@@ -322,33 +318,32 @@ class _MonthJumper extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      group.label,
+                      // Chip sin el año: la fila de cabecera de debajo ya
+                      // muestra "JULIO 2026" completo.
+                      group.monthName,
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
-                    if (unread > 0) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        constraints: const BoxConstraints(minWidth: 18),
-                        height: 18,
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: scheme.primary,
-                          borderRadius: BorderRadius.circular(
-                            AppTokens.pillRadius,
-                          ),
-                        ),
-                        child: Text(
-                          '$unread',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: scheme.onPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 10,
-                              ),
+                    const SizedBox(width: 8),
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 18),
+                      height: 18,
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        borderRadius: BorderRadius.circular(
+                          AppTokens.pillRadius,
                         ),
                       ),
-                    ],
+                      child: Text(
+                        '${group.items.length}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
                     if (active) ...[
                       const SizedBox(width: 8),
                       Container(
@@ -392,9 +387,9 @@ class _CalendarDay extends StatelessWidget {
         .where((item) => !(listenedById[item.id] ?? false))
         .length;
     final hasUnread = unread > 0;
-    // Los días ya escuchados arrancan plegados; los que tienen algo
-    // pendiente arrancan abiertos, salvo que el usuario los haya tocado.
-    final expanded = expandedOverride ?? hasUnread;
+    // Todos los días arrancan plegados; el usuario despliega el que le
+    // interese.
+    final expanded = expandedOverride ?? false;
     final scheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
