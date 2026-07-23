@@ -19,7 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 // Frases provisionales del centro de la esfera. Editar aquí para cambiarlas.
 const _phrases = <String>[
-  'Tu portal, tus llaves',
   'Elige la llave que hoy te llama',
   'Cada llave abre un espacio distinto',
   'Un lugar al que volver cada día',
@@ -155,20 +154,29 @@ class _Sphere extends StatelessWidget {
             // Frase central rotatoria.
             Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: side * 0.22),
+                padding: EdgeInsets.symmetric(
+                  horizontal: side * 0.24,
+                  vertical: side * 0.24,
+                ),
                 child: AnimatedSwitcher(
                   duration: reduceMotion
                       ? Duration.zero
                       : const Duration(milliseconds: 420),
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeOutCubic,
-                  child: Text(
-                    phrase,
+                  // La frase se escala hacia abajo para caber siempre en el
+                  // hueco central de la esfera sin desbordar.
+                  child: FittedBox(
                     key: ValueKey(phrase),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: scheme.onSurface,
-                      height: 1.4,
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: side * 0.52,
+                      child: Text(
+                        phrase,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: scheme.onSurface, height: 1.4),
+                      ),
                     ),
                   ),
                 ),

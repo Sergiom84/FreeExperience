@@ -33,6 +33,8 @@ class ProfileScreen extends ConsumerWidget {
         children: [
           _ProfileHeader(identity: identity),
           const SizedBox(height: 32),
+          const _QuienSoySection(),
+          const SizedBox(height: 8),
           const _DesignDirectionSection(),
           const SizedBox(height: 8),
           const _InformationSection(),
@@ -244,6 +246,34 @@ class _DesignDirectionSection extends ConsumerWidget {
   }
 }
 
+/// "Quien Soy" es ahora una sección propia por encima de "Dirección visual".
+/// Al ser un único destino se presenta como cabecera pulsable, con el mismo
+/// estilo de título que el resto de secciones del perfil.
+class _QuienSoySection extends StatelessWidget {
+  const _QuienSoySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.push('/quien-soy'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Quien Soy',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _InformationSection extends StatelessWidget {
   const _InformationSection();
 
@@ -252,12 +282,6 @@ class _InformationSection extends StatelessWidget {
     return _SectionTile(
       title: 'Información',
       children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Quien Soy'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/quien-soy'),
-        ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('Privacidad'),

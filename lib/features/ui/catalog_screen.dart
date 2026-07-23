@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -99,9 +101,285 @@ class ContentCollection extends ConsumerWidget {
         },
         if (rest.isNotEmpty) ...[
           const SizedBox(height: 24),
-          ...rest.map((item) => _CatalogRow(item: item, direction: direction)),
+          // Cada sección recoge sus audios con un formato propio: Canaliza en
+          // línea de tiempo por mes, Medita en acordeón plegable por mes y
+          // Duerme en una rueda circular que evoca la esfera de entrada.
+          switch (featured.kind) {
+            ContentKind.channeling => _MonthlyTimeline(
+              items: rest,
+              direction: direction,
+            ),
+            ContentKind.meditation => _MonthlyAccordion(
+              items: rest,
+              direction: direction,
+            ),
+            ContentKind.practice => _LunarWheel(
+              items: rest,
+              direction: direction,
+            ),
+            _ => Column(
+              children: rest
+                  .map((item) => _CatalogRow(item: item, direction: direction))
+                  .toList(),
+            ),
+          },
         ],
       ],
+    );
+  }
+}
+
+/// Agrupa una lista de audios por mes de publicación conservando el orden de
+/// entrada. Los audios sin fecha caen en un grupo final "Sin fecha".
+List<MapEntry<String, List<ContentItem>>> _groupByMonth(
+  List<ContentItem> items,
+) {
+  final groups = <String, List<ContentItem>>{};
+  for (final item in items) {
+    final label = formatMonthYear(item.publishedAt);
+    groups.putIfAbsent(label, () => <ContentItem>[]).add(item);
+  }
+  return groups.entries.toList();
+}
+
+class _MonthHeader extends StatelessWidget {
+  const _MonthHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: AppTokens.labelLetterSpacing,
+        ),
+      ),
+    );
+  }
+}
+
+/// Canaliza — línea de tiempo: cabecera de mes discreta seguida de sus filas.
+class _MonthlyTimeline extends StatelessWidget {
+  const _MonthlyTimeline({required this.items, required this.direction});
+
+  final List<ContentItem> items;
+  final DesignDirection direction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final group in _groupByMonth(items)) ...[
+          _MonthHeader(label: group.key),
+          for (final item in group.value)
+            _CatalogRow(item: item, direction: direction),
+        ],
+      ],
+    );
+  }
+}
+
+/// Medita — acordeón: cada mes es un bloque plegable; el primero abierto.
+class _MonthlyAccordion extends StatelessWidget {
+  const _MonthlyAccordion({required this.items, required this.direction});
+
+  final List<ContentItem> items;
+  final DesignDirection direction;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _groupByMonth(items);
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < groups.length; i++)
+            ExpansionTile(
+              key: PageStorageKey('medita-${groups[i].key}'),
+              initiallyExpanded: i == 0,
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 4),
+              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+              title: Text(
+                groups[i].key,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              children: [
+                for (final item in groups[i].value)
+                  _CatalogRow(item: item, direction: direction),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Duerme — rueda: los audios se reparten alrededor de un círculo que evoca la
+/// esfera de entrada. Al tocar un punto, su ficha aparece en el centro.
+class _LunarWheel extends StatefulWidget {
+  const _LunarWheel({required this.items, required this.direction});
+
+  final List<ContentItem> items;
+  final DesignDirection direction;
+
+  @override
+  State<_LunarWheel> createState() => _LunarWheelState();
+}
+
+class _LunarWheelState extends State<_LunarWheel> {
+  int _selected = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final items = widget.items;
+    final selected = items[_selected.clamp(0, items.length - 1)];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = constraints.maxWidth.clamp(0.0, 420.0);
+        final radius = side / 2;
+        return Center(
+          child: SizedBox(
+            width: side,
+            height: side,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    scheme.primary.withValues(alpha: 0.14),
+                    scheme.surface.withValues(alpha: 0.55),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.72, 1.0],
+                ),
+                border: Border.all(
+                  color: scheme.primary.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(side * 0.24),
+                      child: _WheelCenter(item: selected),
+                    ),
+                  ),
+                  for (var i = 0; i < items.length; i++)
+                    Align(
+                      alignment: _dotAlignment(i, items.length),
+                      child: _WheelDot(
+                        item: items[i],
+                        selected: i == _selected,
+                        onTap: () => setState(() => _selected = i),
+                        maxDiameter: (radius * 0.24).clamp(28.0, 56.0),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Reparte el punto i sobre la circunferencia empezando arriba (12 en punto)
+  // y avanzando en el sentido de las agujas del reloj.
+  Alignment _dotAlignment(int i, int count) {
+    final angle = -math.pi / 2 + (2 * math.pi * i / count);
+    return Alignment(0.82 * math.cos(angle), 0.82 * math.sin(angle));
+  }
+}
+
+class _WheelCenter extends StatelessWidget {
+  const _WheelCenter({required this.item});
+
+  final ContentItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Reproducir ${item.title}',
+      child: InkWell(
+        onTap: () => context.push('/content/${item.id}'),
+        customBorder: const CircleBorder(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                item.title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              joinMeta([item.durationLabel, formatMonthYear(item.publishedAt)]),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            _PlayGlyph(item: item, circular: true),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WheelDot extends StatelessWidget {
+  const _WheelDot({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+    required this.maxDiameter,
+  });
+
+  final ContentItem item;
+  final bool selected;
+  final VoidCallback onTap;
+  final double maxDiameter;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final diameter = selected ? maxDiameter : maxDiameter * 0.86;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.title,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: diameter,
+          height: diameter,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected
+                  ? scheme.primary
+                  : scheme.primary.withValues(alpha: 0.5),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: ContentCover(path: item.thumbOrCover),
+        ),
+      ),
     );
   }
 }
