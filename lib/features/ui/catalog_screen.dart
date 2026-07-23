@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -101,283 +99,501 @@ class ContentCollection extends ConsumerWidget {
         },
         if (rest.isNotEmpty) ...[
           const SizedBox(height: 24),
-          // Cada sección recoge sus audios con un formato propio: Canaliza en
-          // línea de tiempo por mes, Medita en acordeón plegable por mes y
-          // Duerme en una rueda circular que evoca la esfera de entrada.
-          switch (featured.kind) {
-            ContentKind.channeling => _MonthlyTimeline(
-              items: rest,
-              direction: direction,
-            ),
-            ContentKind.meditation => _MonthlyAccordion(
-              items: rest,
-              direction: direction,
-            ),
-            ContentKind.practice => _LunarWheel(
-              items: rest,
-              direction: direction,
-            ),
-            _ => Column(
-              children: rest
-                  .map((item) => _CatalogRow(item: item, direction: direction))
-                  .toList(),
-            ),
-          },
+          // Formato "Audio Calendar" (handoff de Claude Design): selector de
+          // mes + días plegables con contador de sin-escuchar. Único formato
+          // para las tres secciones de audio (Canaliza, Medita, Duerme).
+          _AudioCalendar(items: rest, direction: direction),
         ],
       ],
     );
   }
 }
 
-/// Agrupa una lista de audios por mes de publicación conservando el orden de
-/// entrada. Los audios sin fecha caen en un grupo final "Sin fecha".
-List<MapEntry<String, List<ContentItem>>> _groupByMonth(
-  List<ContentItem> items,
-) {
-  final groups = <String, List<ContentItem>>{};
-  for (final item in items) {
-    final label = formatMonthYear(item.publishedAt);
-    groups.putIfAbsent(label, () => <ContentItem>[]).add(item);
-  }
-  return groups.entries.toList();
-}
+const _dayRowIndent = 58.0;
 
-class _MonthHeader extends StatelessWidget {
-  const _MonthHeader({required this.label});
+class _MonthGroup {
+  const _MonthGroup({
+    required this.key,
+    required this.label,
+    required this.items,
+  });
 
+  final String key;
   final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 4),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          letterSpacing: AppTokens.labelLetterSpacing,
-        ),
-      ),
-    );
-  }
+  final List<ContentItem> items;
 }
 
-/// Canaliza — línea de tiempo: cabecera de mes discreta seguida de sus filas.
-class _MonthlyTimeline extends StatelessWidget {
-  const _MonthlyTimeline({required this.items, required this.direction});
+class _DayGroup {
+  const _DayGroup({
+    required this.dateKey,
+    required this.date,
+    required this.items,
+  });
+
+  final String dateKey;
+  final DateTime date;
+  final List<ContentItem> items;
+}
+
+const _weekdayAbbr = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+
+/// Agrupa por mes (clave "YYYY-MM") conservando el orden de entrada. Los
+/// audios sin fecha caen en un grupo final "sin-fecha".
+List<_MonthGroup> _groupByMonth(List<ContentItem> items) {
+  final order = <String>[];
+  final byMonth = <String, List<ContentItem>>{};
+  for (final item in items) {
+    final date = item.publishedAt;
+    final key = date == null
+        ? 'sin-fecha'
+        : '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}';
+    if (!byMonth.containsKey(key)) {
+      order.add(key);
+      byMonth[key] = <ContentItem>[];
+    }
+    byMonth[key]!.add(item);
+  }
+  return order
+      .map(
+        (key) => _MonthGroup(
+          key: key,
+          label: formatMonthYear(byMonth[key]!.first.publishedAt),
+          items: byMonth[key]!,
+        ),
+      )
+      .toList();
+}
+
+/// Agrupa un mes por día calendario, conservando el orden de entrada.
+List<_DayGroup> _groupByDay(List<ContentItem> items) {
+  final order = <String>[];
+  final byDay = <String, List<ContentItem>>{};
+  for (final item in items) {
+    final date = item.publishedAt;
+    final key = date == null
+        ? 'sin-fecha'
+        : '${date.year}-${date.month}-${date.day}';
+    if (!byDay.containsKey(key)) {
+      order.add(key);
+      byDay[key] = <ContentItem>[];
+    }
+    byDay[key]!.add(item);
+  }
+  return order
+      .map(
+        (key) => _DayGroup(
+          dateKey: key,
+          date: byDay[key]!.first.publishedAt ?? DateTime(1970),
+          items: byDay[key]!,
+        ),
+      )
+      .toList();
+}
+
+class _AudioCalendar extends ConsumerStatefulWidget {
+  const _AudioCalendar({required this.items, required this.direction});
 
   final List<ContentItem> items;
   final DesignDirection direction;
 
   @override
+  ConsumerState<_AudioCalendar> createState() => _AudioCalendarState();
+}
+
+class _AudioCalendarState extends ConsumerState<_AudioCalendar> {
+  int _monthIndex = 0;
+  final Map<String, bool> _dayExpandOverride = {};
+
+  @override
   Widget build(BuildContext context) {
+    final listenedById = <String, bool>{
+      for (final item in widget.items)
+        item.id: ref.watch(isListenedProvider(item.id)).value ?? false,
+    };
+    final months = _groupByMonth(widget.items);
+    final monthIndex = _monthIndex.clamp(0, months.length - 1);
+    final month = months[monthIndex];
+    final days = _groupByDay(month.items);
+    final monthUnread = month.items
+        .where((item) => !(listenedById[item.id] ?? false))
+        .length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final group in _groupByMonth(items)) ...[
-          _MonthHeader(label: group.key),
-          for (final item in group.value)
-            _CatalogRow(item: item, direction: direction),
-        ],
-      ],
-    );
-  }
-}
-
-/// Medita — acordeón: cada mes es un bloque plegable; el primero abierto.
-class _MonthlyAccordion extends StatelessWidget {
-  const _MonthlyAccordion({required this.items, required this.direction});
-
-  final List<ContentItem> items;
-  final DesignDirection direction;
-
-  @override
-  Widget build(BuildContext context) {
-    final groups = _groupByMonth(items);
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < groups.length; i++)
-            ExpansionTile(
-              key: PageStorageKey('medita-${groups[i].key}'),
-              initiallyExpanded: i == 0,
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(bottom: 4),
-              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-              title: Text(
-                groups[i].key,
-                style: Theme.of(context).textTheme.titleMedium,
+        _MonthJumper(
+          months: months,
+          listenedById: listenedById,
+          selectedIndex: monthIndex,
+          onSelect: (i) => setState(() => _monthIndex = i),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Theme.of(context).dividerColor),
               ),
-              children: [
-                for (final item in groups[i].value)
-                  _CatalogRow(item: item, direction: direction),
-              ],
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Duerme — rueda: los audios se reparten alrededor de un círculo que evoca la
-/// esfera de entrada. Al tocar un punto, su ficha aparece en el centro.
-class _LunarWheel extends StatefulWidget {
-  const _LunarWheel({required this.items, required this.direction});
-
-  final List<ContentItem> items;
-  final DesignDirection direction;
-
-  @override
-  State<_LunarWheel> createState() => _LunarWheelState();
-}
-
-class _LunarWheelState extends State<_LunarWheel> {
-  int _selected = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final items = widget.items;
-    final selected = items[_selected.clamp(0, items.length - 1)];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final side = constraints.maxWidth.clamp(0.0, 420.0);
-        final radius = side / 2;
-        return Center(
-          child: SizedBox(
-            width: side,
-            height: side,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    scheme.primary.withValues(alpha: 0.14),
-                    scheme.surface.withValues(alpha: 0.55),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.72, 1.0],
-                ),
-                border: Border.all(
-                  color: scheme.primary.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Stack(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(side * 0.24),
-                      child: _WheelCenter(item: selected),
+                  Text(
+                    month.label.toUpperCase(),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      letterSpacing: AppTokens.labelLetterSpacing,
                     ),
                   ),
-                  for (var i = 0; i < items.length; i++)
-                    Align(
-                      alignment: _dotAlignment(i, items.length),
-                      child: _WheelDot(
-                        item: items[i],
-                        selected: i == _selected,
-                        onTap: () => setState(() => _selected = i),
-                        maxDiameter: (radius * 0.24).clamp(28.0, 56.0),
-                      ),
-                    ),
+                  Text(
+                    '${month.items.length} ${month.items.length == 1 ? 'audio' : 'audios'} · '
+                    '${monthUnread == 0 ? 'todo escuchado' : '$monthUnread sin escuchar'}',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ],
               ),
             ),
           ),
-        );
-      },
+        ),
+        for (final day in days)
+          _CalendarDay(
+            day: day,
+            direction: widget.direction,
+            listenedById: listenedById,
+            expandedOverride: _dayExpandOverride[day.dateKey],
+            onToggle: () => setState(() {
+              final current =
+                  _dayExpandOverride[day.dateKey] ??
+                  day.items.any((item) => !(listenedById[item.id] ?? false));
+              _dayExpandOverride[day.dateKey] = !current;
+            }),
+          ),
+      ],
     );
-  }
-
-  // Reparte el punto i sobre la circunferencia empezando arriba (12 en punto)
-  // y avanzando en el sentido de las agujas del reloj.
-  Alignment _dotAlignment(int i, int count) {
-    final angle = -math.pi / 2 + (2 * math.pi * i / count);
-    return Alignment(0.82 * math.cos(angle), 0.82 * math.sin(angle));
   }
 }
 
-class _WheelCenter extends StatelessWidget {
-  const _WheelCenter({required this.item});
+class _MonthJumper extends StatelessWidget {
+  const _MonthJumper({
+    required this.months,
+    required this.listenedById,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
 
-  final ContentItem item;
+  final List<_MonthGroup> months;
+  final Map<String, bool> listenedById;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Reproducir ${item.title}',
-      child: InkWell(
-        onTap: () => context.push('/content/${item.id}'),
-        customBorder: const CircleBorder(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                item.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: months.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final group = months[i];
+          final unread = group.items
+              .where((item) => !(listenedById[item.id] ?? false))
+              .length;
+          final active = i == selectedIndex;
+          return Semantics(
+            button: true,
+            selected: active,
+            label: group.label,
+            child: InkWell(
+              onTap: () => onSelect(i),
+              borderRadius: BorderRadius.circular(AppTokens.pillRadius),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppTokens.pillRadius),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      group.label,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    if (unread > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        constraints: const BoxConstraints(minWidth: 18),
+                        height: 18,
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          borderRadius: BorderRadius.circular(
+                            AppTokens.pillRadius,
+                          ),
+                        ),
+                        child: Text(
+                          '$unread',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: scheme.onPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                        ),
+                      ),
+                    ],
+                    if (active) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              joinMeta([item.durationLabel, formatMonthYear(item.publishedAt)]),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            _PlayGlyph(item: item, circular: true),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
 
-class _WheelDot extends StatelessWidget {
-  const _WheelDot({
-    required this.item,
-    required this.selected,
-    required this.onTap,
-    required this.maxDiameter,
+class _CalendarDay extends StatelessWidget {
+  const _CalendarDay({
+    required this.day,
+    required this.direction,
+    required this.listenedById,
+    required this.expandedOverride,
+    required this.onToggle,
   });
 
-  final ContentItem item;
-  final bool selected;
-  final VoidCallback onTap;
-  final double maxDiameter;
+  final _DayGroup day;
+  final DesignDirection direction;
+  final Map<String, bool> listenedById;
+  final bool? expandedOverride;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
+    final unread = day.items
+        .where((item) => !(listenedById[item.id] ?? false))
+        .length;
+    final hasUnread = unread > 0;
+    // Los días ya escuchados arrancan plegados; los que tienen algo
+    // pendiente arrancan abiertos, salvo que el usuario los haya tocado.
+    final expanded = expandedOverride ?? hasUnread;
     final scheme = Theme.of(context).colorScheme;
-    final diameter = selected ? maxDiameter : maxDiameter * 0.86;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: item.title,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: diameter,
-          height: diameter,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: selected
-                  ? scheme.primary
-                  : scheme.primary.withValues(alpha: 0.5),
-              width: selected ? 2 : 1,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            button: true,
+            label: '${day.date.day} ${_weekdayAbbr[day.date.weekday % 7]}',
+            child: InkWell(
+              onTap: onToggle,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 64),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        child: Column(
+                          children: [
+                            Text(
+                              day.date.day.toString().padLeft(2, '0'),
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(
+                                    fontSize: 30,
+                                    height: 1,
+                                    color: hasUnread ? null : scheme.outline,
+                                  ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _weekdayAbbr[day.date.weekday % 7],
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(fontSize: 9, letterSpacing: 1.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              day.items.length == 1
+                                  ? '1 audio'
+                                  : '${day.items.length} audios',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.copyWith(fontSize: 15),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              unread == 0
+                                  ? 'Todo escuchado'
+                                  : unread == day.items.length
+                                  ? 'Sin escuchar'
+                                  : '$unread sin escuchar',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (hasUnread) ...[
+                        const SizedBox(width: 12),
+                        Container(
+                          constraints: const BoxConstraints(minWidth: 20),
+                          height: 20,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
+                            borderRadius: BorderRadius.circular(
+                              AppTokens.pillRadius,
+                            ),
+                          ),
+                          child: Text(
+                            '$unread',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: scheme.onPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      Icon(
+                        expanded ? Icons.expand_less : Icons.expand_more,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: ContentCover(path: item.thumbOrCover),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.only(left: _dayRowIndent, bottom: 6),
+              child: Column(
+                children: [
+                  for (final item in day.items)
+                    _CalendarRow(
+                      item: item,
+                      listened: listenedById[item.id] ?? false,
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fila de audio dentro de un día: sin fecha, porque ya la marca la
+/// cabecera del día.
+class _CalendarRow extends StatelessWidget {
+  const _CalendarRow({required this.item, required this.listened});
+
+  final ContentItem item;
+  final bool listened;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: [item.title, if (item.author != null) item.author!].join(', '),
+      child: InkWell(
+        onTap: () => context.push('/content/${item.id}'),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: _rowMinHeight),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Theme.of(context).dividerColor),
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 72,
+                height: 72,
+                child: ContentCover(
+                  path: item.thumbOrCover,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: listened
+                            ? Theme.of(context).textTheme.bodySmall?.color
+                            : null,
+                      ),
+                    ),
+                    if (item.author != null) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        item.author!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (listened) ...[
+                Semantics(
+                  label: 'Escuchado',
+                  child: Icon(
+                    Icons.check_circle,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                item.durationLabel,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -558,93 +774,6 @@ class _MineralFeature extends StatelessWidget {
             ),
             Divider(color: Theme.of(context).dividerColor, height: 1),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CatalogRow extends ConsumerWidget {
-  const _CatalogRow({required this.item, required this.direction});
-
-  final ContentItem item;
-  final DesignDirection direction;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final listened = ref.watch(isListenedProvider(item.id)).value ?? false;
-    return Semantics(
-      button: true,
-      label: [item.title, if (item.author != null) item.author!].join(', '),
-      child: InkWell(
-        onTap: () => context.push('/content/${item.id}'),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: _rowMinHeight),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Theme.of(context).dividerColor),
-            ),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 72,
-                height: 72,
-                child: ContentCover(
-                  // Miniatura cuadrada: usa el recorte 1:1 si existe, si no la
-                  // portada 4:5 recortada al centro.
-                  path: item.thumbOrCover,
-                  borderRadius: BorderRadius.circular(
-                    direction == DesignDirection.materia ? 4 : 2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      item.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    if (item.author != null) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        item.author!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                    if (formatLongDate(item.publishedAt).isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        formatLongDate(item.publishedAt),
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              if (listened) ...[
-                Semantics(
-                  label: 'Escuchado',
-                  child: Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                item.durationLabel,
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
-          ),
         ),
       ),
     );
